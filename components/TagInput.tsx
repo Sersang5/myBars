@@ -49,9 +49,9 @@ export function TagInput({ value, onChange, suggestions }: Props) {
         {value.map((t, i) => (
           <li
             key={t.name}
-            className="flex min-h-11 items-center justify-between gap-2 rounded-lg bg-zinc-100 pl-3 dark:bg-zinc-800"
+            className="flex min-h-11 flex-wrap items-center justify-between gap-x-2 rounded-lg bg-zinc-100 pl-3 dark:bg-zinc-800"
           >
-            <span className="truncate">{t.name}</span>
+            <span className="min-w-24 flex-1 truncate">{t.name}</span>
             <span className="flex items-center">
               <Stars
                 size="sm"
