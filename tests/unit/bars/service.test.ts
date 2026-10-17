@@ -214,4 +214,16 @@ describe("bars service", () => {
     await service.deleteBar(barId);
     expect(await repo.getBar(barId)).toBeNull();
   });
+
+  it("markVisited and addVisitedBar on a pending bar clear pendingReason", async () => {
+    const { service, repo } = ctx;
+    const a = await service.addPendingBar(bar.googlePlaceId, "razón");
+    expect((await repo.getBar(a.barId))!.pendingReason).toBe("razón");
+    await service.markVisited(a.barId, {});
+    expect((await repo.getBar(a.barId))!.pendingReason).toBeNull();
+
+    const b = await service.addPendingBar(rural.googlePlaceId, "otra razón");
+    await service.addVisitedBar(rural.googlePlaceId, {});
+    expect((await repo.getBar(b.barId))!.pendingReason).toBeNull();
+  });
 });

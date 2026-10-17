@@ -56,7 +56,7 @@ export function createMemoryBarsRepo(): BarsRepo & {
         name: tags.get(tagId)!.name,
         rating,
       })),
-      visits: [...(visits.get(rec.id) ?? [])],
+      visits: [...(visits.get(rec.id) ?? [])].sort((a, b) => b.date.localeCompare(a.date)),
       createdAt: rec.createdAt,
     };
   }

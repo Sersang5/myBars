@@ -226,13 +226,20 @@ export function createSupabaseBarsRepo(sb: SupabaseClient): BarsRepo {
     },
 
     async setBarTags(barId, tags) {
-      const { error: delError } = await sb.from("bar_tags").delete().eq("my_bar_id", barId);
+      // Upsert first so a failure never leaves the bar without its previous tags.
+      if (tags.length > 0) {
+        const { error } = await sb
+          .from("bar_tags")
+          .upsert(
+            tags.map((t) => ({ my_bar_id: barId, tag_id: t.tagId, rating: t.rating })),
+            { onConflict: "my_bar_id,tag_id" },
+          );
+        fail("setBarTags.upsert", error);
+      }
+      let del = sb.from("bar_tags").delete().eq("my_bar_id", barId);
+      if (tags.length > 0) del = del.not("tag_id", "in", `(${tags.map((t) => t.tagId).join(",")})`);
+      const { error: delError } = await del;
       fail("setBarTags.delete", delError);
-      if (tags.length === 0) return;
-      const { error } = await sb
-        .from("bar_tags")
-        .insert(tags.map((t) => ({ my_bar_id: barId, tag_id: t.tagId, rating: t.rating })));
-      fail("setBarTags.insert", error);
     },
 
     async addVisit(barId, date, note) {

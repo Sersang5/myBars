@@ -101,6 +101,19 @@ describe("createSupabaseBarsRepo", () => {
     expect(await repo.listAllVisitedGooglePlaceIds()).toEqual(new Set([details.googlePlaceId]));
     expect((await repo.listTags()).map((t) => t.name)).toEqual(["tortilla", "vermut"]);
 
+    // Replacing a tag set keeps exactly the new set with the new ratings.
+    const queso = await repo.upsertTag("queso");
+    await repo.setBarTags(barId, [
+      { tagId: vermut.id, rating: 4 },
+      { tagId: queso.id, rating: null },
+    ]);
+    expect((await repo.getBar(barId))!.tags.map((t) => [t.name, t.rating]).sort()).toEqual([
+      ["queso", null],
+      ["vermut", 4],
+    ]);
+    await repo.setBarTags(barId, []);
+    expect((await repo.getBar(barId))!.tags).toEqual([]);
+
     await repo.updateBar(barId, { status: "pending", pendingReason: "volver" });
     expect((await repo.getBar(barId))?.status).toBe("pending");
     expect(await repo.listPendingGooglePlaceIds()).toEqual(new Set([details.googlePlaceId]));
@@ -111,7 +124,12 @@ describe("createSupabaseBarsRepo", () => {
 
   it("works end to end through the service", async () => {
     const repo = createSupabaseBarsRepo(sb);
-    const d: PlaceDetails = { ...details, googlePlaceId: "ChIJint-bar-2", name: "Otro Bar" };
+    const d: PlaceDetails = {
+      ...details,
+      googlePlaceId: "ChIJint-bar-2",
+      name: "Otro Bar",
+      addressComponents: [{ longText: "Vigo", shortText: "Vigo", types: ["locality", "political"] }],
+    };
     const places = {
       autocomplete: async () => [],
       textSearch: async () => [],
@@ -125,7 +143,7 @@ describe("createSupabaseBarsRepo", () => {
     expect(second).toEqual({ barId: first.barId, existed: true });
 
     const bar = await repo.getBar(first.barId);
-    expect(bar?.cityId).not.toBeNull();
+    expect(bar?.cityId).toBe((await repo.findCityByName("Vigo"))?.id);
     expect(bar?.tags.map((t) => t.name)).toEqual(["croquetas"]);
     expect(bar?.visits).toHaveLength(1);
   });
