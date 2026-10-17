@@ -1,7 +1,7 @@
 "use client";
 
 import type { KeyboardEvent, MouseEvent } from "react";
-import { starFromPointer } from "@/lib/ui/stars";
+import { nextStarValue, starFromPointer } from "@/lib/ui/stars";
 
 export { starFromPointer };
 
@@ -17,19 +17,21 @@ const STAR_PATH =
 
 export function formatStars(v: number | null): string {
   if (v === null) return "Sin valorar";
+  if (v === 1) return "1 estrella";
   return `${String(v).replace(".", ",")} estrellas`;
 }
 
 export function Stars({ value, onChange, size = "lg", label }: Props) {
   const interactive = !!onChange;
   const box = size === "lg" ? "h-11 w-11" : "h-7 w-7";
+  // Interactive stars always get a 44px hit area (22px per half), even when drawn small.
+  const hit = interactive ? "h-11 w-11" : box;
   const current = value ?? 0;
 
   function onStarClick(e: MouseEvent<HTMLSpanElement>, index: number) {
     if (!onChange) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const v = starFromPointer(e.clientX - rect.left, rect.width, index);
-    onChange(v === value ? null : v);
+    onChange(nextStarValue(value, starFromPointer(e.clientX - rect.left, rect.width, index)));
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
@@ -65,8 +67,9 @@ export function Stars({ value, onChange, size = "lg", label }: Props) {
           <span
             key={i}
             onClick={interactive ? (e) => onStarClick(e, i) : undefined}
-            className={`relative block ${box} ${interactive ? "cursor-pointer" : ""}`}
+            className={`flex items-center justify-center ${hit} ${interactive ? "cursor-pointer" : ""}`}
           >
+            <span className={`relative block ${box}`}>
             <svg viewBox="0 0 24 24" className={`absolute left-0 top-0 ${box}`} aria-hidden>
               <path
                 d={STAR_PATH}
@@ -78,6 +81,7 @@ export function Stars({ value, onChange, size = "lg", label }: Props) {
               <svg viewBox="0 0 24 24" className={`block max-w-none ${box}`} aria-hidden>
                 <path d={STAR_PATH} strokeLinejoin="round" className="fill-amber-600 stroke-amber-600" />
               </svg>
+            </span>
             </span>
           </span>
         );

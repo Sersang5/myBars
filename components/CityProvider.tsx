@@ -40,14 +40,19 @@ export function CityProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const res = await listCitiesAction();
-    if (res.ok) {
-      setCities(res.data);
-      setError(null);
-    } else {
-      setError(res.error);
+    try {
+      const res = await listCitiesAction();
+      if (res.ok) {
+        setCities(res.data);
+        setError(null);
+      } else {
+        setError(res.error);
+      }
+    } catch {
+      setError("No se pudieron cargar las ciudades");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
