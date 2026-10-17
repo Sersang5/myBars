@@ -4,6 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 /** Deletes all of the E2E user's data (service role bypasses RLS). Tables ordered child-first. */
 export async function resetData() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  if (!/^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(url)) {
+    throw new Error("Refusing to reset data on a non-local Supabase");
+  }
   const admin = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -22,10 +25,9 @@ export async function addFirstCity(page: Page) {
   await expect(page.getByRole("heading", { name: "Añade tu primera ciudad" })).toBeHidden();
 }
 
-/** Sets a half-step star slider by keyboard (each ArrowRight adds 0.5). */
+/** Sets a half-step star slider by keyboard from empty (each ArrowRight adds 0.5). */
 export async function setStars(slider: Locator, value: number) {
   await slider.focus();
-  await slider.press("Home").catch(() => undefined);
   for (let i = 0; i < value * 2; i++) await slider.press("ArrowRight");
   await expect(slider).toHaveAttribute("aria-valuenow", String(value));
 }

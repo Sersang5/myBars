@@ -36,6 +36,7 @@ MyBars es una PWA personal (un solo usuario). Necesita tres servicios externos: 
 5. En *Authentication > URL Configuration*:
    - **Site URL**: `https://<tu-dominio-vercel>`
    - **Redirect URLs**: añade `https://<tu-dominio-vercel>/auth/callback` (y `http://localhost:3000/auth/callback` para desarrollo).
+   - Los despliegues de *Preview* de Vercel tienen otra URL: añade un comodín como `https://*-<proyecto>.vercel.app/**` o usa solo Production.
 6. En *Project Settings > API* copia la **Project URL** (`NEXT_PUBLIC_SUPABASE_URL`) y la clave **anon** (`NEXT_PUBLIC_SUPABASE_ANON_KEY`).
    Nunca uses la service role key en la aplicación desplegada.
 

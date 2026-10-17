@@ -28,11 +28,10 @@ test("add bars, filter by tag and search", async ({ page }) => {
   await page.goto("/bars");
   await addFirstCity(page);
 
-  await addVisitedBar(page, "Bar La Tortilla", "Tortilla", 5);
-  const first = page.getByRole("button", { name: /Bar La Tortilla/ });
-  await expect(first).toContainText("tortilla 5");
-
-  await addVisitedBar(page, "Casa Pepe", "Tortilla", 3);
+  // Lower tag rating first, so the expected order differs from insertion and alphabetical order.
+  await addVisitedBar(page, "Bar La Tortilla", "Tortilla", 3);
+  await expect(page.getByRole("button", { name: /Bar La Tortilla/ })).toContainText("tortilla 3");
+  await addVisitedBar(page, "Casa Pepe", "Tortilla", 5);
   await expect(page.getByRole("button", { name: /Casa Pepe/ })).toBeVisible();
 
   // Filter by the tag: the bar with the higher tag rating comes first.
@@ -43,13 +42,17 @@ test("add bars, filter by tag and search", async ({ page }) => {
 
   const cards = page.getByRole("button", { name: /Última visita/ });
   await expect(cards).toHaveCount(2);
-  await expect(cards.nth(0)).toContainText("Bar La Tortilla");
+  await expect(cards.nth(0)).toContainText("Casa Pepe");
   await expect(cards.nth(0)).toContainText("tortilla 5");
-  await expect(cards.nth(1)).toContainText("Casa Pepe");
+  await expect(cards.nth(1)).toContainText("Bar La Tortilla");
   await expect(cards.nth(1)).toContainText("tortilla 3");
 
   // Free-text search matches both (name for one, tag for the other).
   await page.getByRole("button", { name: /Quitar filtro tortilla/ }).click();
   await page.getByRole("searchbox", { name: "Buscar", exact: true }).fill("tort");
   await expect(cards).toHaveCount(2);
+
+  // A non-matching search finds nothing.
+  await page.getByRole("searchbox", { name: "Buscar", exact: true }).fill("zzz");
+  await expect(cards).toHaveCount(0);
 });
