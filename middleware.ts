@@ -1,8 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isAllowedEmail } from "@/lib/auth/allowed";
+import { isPublicPath } from "@/lib/auth/public-paths";
 
 export async function middleware(request: NextRequest) {
+  if (isPublicPath(request.nextUrl.pathname)) return NextResponse.next();
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -34,7 +37,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!login|auth/|_next/|manifest\.webmanifest|favicon\.ico|icons/|icon|apple-icon|sw\.js).*)",
-  ],
+  // Broad on purpose: public paths are decided by isPublicPath (anchored, unit-tested).
+  matcher: ["/((?!_next/).*)"],
 };
