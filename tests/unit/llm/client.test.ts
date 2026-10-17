@@ -5,6 +5,16 @@ import { createClaudeLlm, LlmError } from "@/lib/llm/client";
 
 const schema = z.object({ a: z.number() });
 
+type SentBody = {
+  model: string;
+  max_tokens: number;
+  betas: string[];
+  fallbacks: string;
+  output_config: { effort: string; format: unknown };
+  system: string;
+  messages: unknown[];
+};
+
 function fakeClient(impl: (body: Record<string, unknown>) => Promise<unknown>) {
   const bodies: Record<string, unknown>[] = [];
   const client = {
@@ -30,7 +40,7 @@ describe("createClaudeLlm", () => {
     const { client, bodies } = fakeClient(async () => ok('{"a":1}'));
     const llm = createClaudeLlm("k", "claude-opus-5-5", client);
     expect(await llm.json({ system: "S", user: "U", schema })).toEqual({ a: 1 });
-    const b = bodies[0] as any;
+    const b = bodies[0] as SentBody;
     expect(b.model).toBe("claude-opus-5-5");
     expect(b.max_tokens).toBe(16000);
     expect(b.betas).toEqual(["server-side-fallback-2026-07-01"]);
@@ -45,7 +55,7 @@ describe("createClaudeLlm", () => {
   it("honours maxTokens", async () => {
     const { client, bodies } = fakeClient(async () => ok('{"a":1}'));
     await createClaudeLlm("k", "m", client).json({ system: "S", user: "U", schema, maxTokens: 500 });
-    expect((bodies[0] as any).max_tokens).toBe(500);
+    expect((bodies[0] as SentBody).max_tokens).toBe(500);
   });
 
   it("maps refusal", async () => {

@@ -10,6 +10,15 @@ import { createPlacesClient } from "@/lib/places/client";
 import { madridToday } from "./today";
 import type { PlaceDetails, PlacesClient } from "@/lib/places/types";
 
+/** Fixture-backed Places for E2E/dev; never active in production builds. */
+async function createPlaces(apiKey: string): Promise<PlacesClient> {
+  if (process.env.PLACES_FAKE === "1" && process.env.NODE_ENV !== "production") {
+    const { createFakePlacesClient } = await import("@/lib/places/fake");
+    return createFakePlacesClient();
+  }
+  return createPlacesClient(apiKey);
+}
+
 export async function getDeps(): Promise<{
   repo: BarsRepo;
   places: PlacesClient;
@@ -20,7 +29,7 @@ export async function getDeps(): Promise<{
   const env = getServerEnv();
   const sb = await createServerSupabase();
   const repo = createSupabaseBarsRepo(sb);
-  const places = createPlacesClient(env.GOOGLE_MAPS_API_KEY);
+  const places = await createPlaces(env.GOOGLE_MAPS_API_KEY);
   const details = createCachedDetails(places, repo);
   const service = createBarsService({ repo, places, details, today: madridToday });
   const llm = createClaudeLlm(env.ANTHROPIC_API_KEY, env.ANTHROPIC_MODEL);
