@@ -2,22 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  addPendingBarAction,
-  deleteBarAction,
-  listBarsAction,
-  listTagsAction,
-  markVisitedAction,
-} from "@/app/actions/bars";
+import { useCallback, useMemo, useState } from "react";
+import { addPendingBarAction, deleteBarAction, markVisitedAction } from "@/app/actions/bars";
 import { BarForm, type BarFormValue } from "@/components/bars/BarForm";
 import { PlaceSearch } from "@/components/bars/PlaceSearch";
 import { BottomSheet } from "@/components/BottomSheet";
 import { useCity } from "@/components/CityProvider";
+import { useCityBars } from "@/hooks/useCityBars";
 import { PendingCard } from "@/components/pending/PendingCard";
 import { sortPending } from "@/lib/bars/query";
 import type { Bar } from "@/lib/bars/types";
-import type { TagRow } from "@/lib/db/types";
 import type { Suggestion } from "@/lib/places/types";
 
 type Mode = { kind: "list" } | { kind: "search" } | { kind: "visit"; barId: string };
@@ -25,53 +19,44 @@ type Mode = { kind: "list" } | { kind: "search" } | { kind: "visit"; barId: stri
 export default function PendingPage() {
   const router = useRouter();
   const { city } = useCity();
-  const cityId = city?.id ?? null;
-  const [bars, setBars] = useState<Bar[]>([]);
-  const [tags, setTags] = useState<TagRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { bars, tags, loading, error, reload } = useCityBars("pending", "No se pudieron cargar los pendientes");
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const [mode, setMode] = useState<Mode>({ kind: "list" });
 
   const load = useCallback(async () => {
-    if (!cityId) return;
-    try {
-      const [b, t] = await Promise.all([listBarsAction(cityId, "pending"), listTagsAction()]);
-      if (b.ok) {
-        setBars(b.data);
-        setError(null);
-      } else {
-        setError(b.error);
-      }
-      if (t.ok) setTags(t.data);
-    } catch {
-      setError("No se pudieron cargar los pendientes");
-    } finally {
-      setLoading(false);
-    }
-  }, [cityId]);
-
-  useEffect(() => {
-    setLoading(true);
-    void load();
-  }, [load]);
+    setNotice(null);
+    return reload();
+  }, [reload]);
 
   const sorted = useMemo(() => sortPending(bars), [bars]);
   const close = () => setMode({ kind: "list" });
   const visitBar = mode.kind === "visit" ? bars.find((b) => b.id === mode.barId) : undefined;
 
   async function add(place: Suggestion) {
+    if (adding) return;
+    setAdding(true);
     setActionError(null);
-    setNotice(null);
-    const res = await addPendingBarAction(place.googlePlaceId, null);
     close();
-    if (!res.ok) {
-      setActionError(res.error);
-      return;
+    try {
+      const res = await addPendingBarAction(place.googlePlaceId, null);
+      if (!res.ok) {
+        setActionError(res.error);
+        return;
+      }
+      const fresh = await reload();
+      const barId = res.data.barId;
+      setNotice(
+        res.data.existed
+          ? fresh && !fresh.some((b) => b.id === barId)
+            ? "Ya está en Mis Bares"
+            : "Ya estaba en tu lista"
+          : null,
+      );
+    } finally {
+      setAdding(false);
     }
-    if (res.data.existed) setNotice("Ya estaba en tu lista");
-    await load();
   }
 
   async function markVisited(barId: string, value: BarFormValue): Promise<string | null> {
@@ -84,6 +69,7 @@ export default function PendingPage() {
   async function remove(bar: Bar) {
     if (!window.confirm(`¿Quitar "${bar.name}" de Pendientes?`)) return;
     setActionError(null);
+    setNotice(null);
     const res = await deleteBarAction(bar.id);
     if (res.ok) await load();
     else setActionError(res.error);

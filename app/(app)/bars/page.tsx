@@ -1,13 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  addVisitedBarAction,
-  listBarsAction,
-  listTagsAction,
-  updateBarAction,
-} from "@/app/actions/bars";
+import { useEffect, useMemo, useState } from "react";
+import { addVisitedBarAction, updateBarAction } from "@/app/actions/bars";
 import { BarCard } from "@/components/bars/BarCard";
 import { BarDetail } from "@/components/bars/BarDetail";
 import { BarFilters } from "@/components/bars/BarFilters";
@@ -15,9 +10,9 @@ import { BarForm, type BarFormValue } from "@/components/bars/BarForm";
 import { PlaceSearch } from "@/components/bars/PlaceSearch";
 import { BottomSheet } from "@/components/BottomSheet";
 import { useCity } from "@/components/CityProvider";
+import { useCityBars } from "@/hooks/useCityBars";
 import { defaultSort, filterBars, sortBars } from "@/lib/bars/query";
-import type { Bar, BarFilters as Filters, BarSort } from "@/lib/bars/types";
-import type { TagRow } from "@/lib/db/types";
+import type { BarFilters as Filters, BarSort } from "@/lib/bars/types";
 import type { Suggestion } from "@/lib/places/types";
 import { madridToday } from "@/lib/server/today";
 import { formatRating } from "@/lib/ui/format";
@@ -52,38 +47,11 @@ function activeCount(f: Filters): number {
 
 export default function BarsPage() {
   const { city } = useCity();
-  const cityId = city?.id ?? null;
-  const [bars, setBars] = useState<Bar[]>([]);
-  const [tags, setTags] = useState<TagRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { bars, tags, loading, error, reload: load } = useCityBars("visited", "No se pudieron cargar los bares");
   const [filters, setFilters] = useState<Filters>({});
   const [searchText, setSearchText] = useState("");
   const [sort, setSort] = useState<BarSort | null>(null);
   const [mode, setMode] = useState<Mode>({ kind: "list" });
-
-  const load = useCallback(async () => {
-    if (!cityId) return;
-    try {
-      const [b, t] = await Promise.all([listBarsAction(cityId, "visited"), listTagsAction()]);
-      if (b.ok) {
-        setBars(b.data);
-        setError(null);
-      } else {
-        setError(b.error);
-      }
-      if (t.ok) setTags(t.data);
-    } catch {
-      setError("No se pudieron cargar los bares");
-    } finally {
-      setLoading(false);
-    }
-  }, [cityId]);
-
-  useEffect(() => {
-    setLoading(true);
-    void load();
-  }, [load]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -310,7 +278,7 @@ export default function BarsPage() {
           <BarDetail
             bar={detailBar}
             notice={mode.notice}
-            onChanged={load}
+            onChanged={async () => { await load(); }}
             onEdit={() => setMode({ kind: "edit", barId: detailBar.id })}
             onDeleted={async () => {
               await load();
