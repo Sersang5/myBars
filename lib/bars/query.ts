@@ -25,9 +25,11 @@ export function filterBars(bars: Bar[], f: BarFilters, today: Date): Bar[] {
   const text = f.text ? fold(f.text.trim()) : "";
   let cutoff: string | null = null;
   if (f.visitedWithinMonths !== undefined) {
-    const d = new Date(today.getTime());
-    d.setMonth(d.getMonth() - f.visitedWithinMonths);
-    cutoff = isoDate(d);
+    const total = today.getFullYear() * 12 + today.getMonth() - f.visitedWithinMonths;
+    const year = Math.floor(total / 12);
+    const month = total - year * 12;
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    cutoff = isoDate(new Date(year, month, Math.min(today.getDate(), lastDay)));
   }
 
   return bars.filter((bar) => {

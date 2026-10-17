@@ -47,6 +47,17 @@ describe("filterBars", () => {
     const never = makeBar({ id: "3" });
     expect(filterBars([recent, old, never], { visitedWithinMonths: 3 }, today)).toEqual([recent]);
   });
+  it("visitedWithinMonths clamps the cutoff at month end", () => {
+    const eod = new Date("2026-05-31T12:00:00");
+    const edge = makeBar({ id: "1", visits: [visit("v", "2026-02-28")] });
+    const before = makeBar({ id: "2", visits: [visit("v", "2026-02-27")] });
+    expect(filterBars([edge, before], { visitedWithinMonths: 3 }, eod)).toEqual([edge]);
+  });
+  it("visitedWithinMonths includes the exact boundary date", () => {
+    const edge = makeBar({ id: "1", visits: [visit("v", "2026-07-17")] });
+    const before = makeBar({ id: "2", visits: [visit("v", "2026-07-16")] });
+    expect(filterBars([edge, before], { visitedWithinMonths: 3 }, today)).toEqual([edge]);
+  });
   it("empty filters return everything", () => {
     const bars = [makeBar({ id: "1" }), makeBar({ id: "2" })];
     expect(filterBars(bars, {}, today)).toEqual(bars);
