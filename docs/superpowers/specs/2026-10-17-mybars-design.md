@@ -31,7 +31,7 @@ Todo está segmentado por **ciudad** (selector global). El explorador admite ade
 - **Datos y auth**: Supabase (Postgres). Login por enlace mágico (email). Row Level Security: todas las tablas con `user_id = auth.uid()`.
 - **APIs externas** (solo desde rutas de servidor; las claves nunca llegan al cliente):
   - Google Places API (New): Autocomplete, Text Search, Place Details.
-  - Anthropic API (Claude Sonnet, modelo configurable por variable de entorno).
+  - Anthropic API (por defecto `claude-opus-5-5` con esfuerzo `low`; configurable por `ANTHROPIC_MODEL`, p. ej. `claude-sonnet-5-5` para reducir coste a la mitad). Fallback de rechazo del lado del servidor activado (`fallbacks: "default"`).
 - **Configuración**: `.env.local` con `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`. Se entrega `.env.example` y `docs/setup.md` con los pasos para obtener cada clave.
 
 ### Estructura de módulos
@@ -73,7 +73,7 @@ bar_tags    my_bar_id, tag_id, rating numeric(2,1) 1–5 nullable   PK(my_bar_id
 ```
 
 Reglas:
-- **Nota global** = `rating_overall_manual` si existe; si no, media de los criterios generales no nulos. Se calcula en una vista `my_bars_view`.
+- **Nota global** = `rating_overall_manual` si existe; si no, media de los criterios generales no nulos, redondeada a 0,1. Se calcula en TypeScript (`lib/bars/rating.ts`); al ser un único usuario, la lista de una ciudad se carga entera y filtros/orden se aplican en memoria.
 - **Pendiente → visitado**: cambia `status`, abre el formulario de valoración y registra una visita con fecha de hoy.
 - **Ciudad**: se deriva del componente `locality` de Google al añadir un local; si la ciudad no existe se crea.
 - **Tags** globales (no por ciudad). Un tag sin nota es descriptivo ("terraza"); con nota participa en rankings.
@@ -120,7 +120,7 @@ Entrada: `{ prompt, cityId | { lat, lng, radiusM }, novelty: 'auto'|'new'|'inclu
 La fuente de reseñas se abstrae como `ReviewSource { getReviews(placeId): Review[] }`; la implementación v1 usa Place Details.
 
 ### Errores
-- Places sin resultados → respuesta vacía con sugerencia de ampliar el radio o reformular (generada por Claude).
+- Places sin resultados → respuesta vacía con un mensaje fijo que sugiere ampliar el radio o reformular.
 - Fallo o timeout de Claude en `rank` → resultados de Places ordenados por nota × log(nº reseñas), sin motivos.
 - Fallo de Claude en `interpret` → usar el prompt literal como única consulta.
 - GPS denegado → se cambia a ámbito ciudad con aviso.
