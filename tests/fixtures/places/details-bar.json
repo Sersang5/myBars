@@ -1,0 +1,22 @@
+{
+  "id": "ChIJbar1",
+  "displayName": { "text": "Bar La Tortilla", "languageCode": "es" },
+  "formattedAddress": "Rúa Real 5, 15003 A Coruña",
+  "location": { "latitude": 43.3713, "longitude": -8.396 },
+  "rating": 4.6,
+  "userRatingCount": 812,
+  "priceLevel": "PRICE_LEVEL_MODERATE",
+  "googleMapsUri": "https://maps.google.com/?cid=111",
+  "editorialSummary": { "text": "Clásico de tortilla jugosa.", "languageCode": "es" },
+  "currentOpeningHours": { "openNow": true },
+  "photos": [ { "name": "places/ChIJbar1/photos/PHOTO1" }, { "name": "places/ChIJbar1/photos/PHOTO2" } ],
+  "addressComponents": [
+    { "longText": "5", "shortText": "5", "types": ["street_number"] },
+    { "longText": "A Coruña", "shortText": "A Coruña", "types": ["locality", "political"] },
+    { "longText": "A Coruña", "shortText": "C", "types": ["administrative_area_level_2", "political"] }
+  ],
+  "reviews": [
+    { "rating": 5, "relativeTimeDescription": "hace un mes", "text": { "text": "La mejor tortilla.", "languageCode": "es" }, "authorAttribution": { "displayName": "Ana" } },
+    { "rating": 4, "relativeTimeDescription": "hace 2 meses", "text": { "text": "Muy bien.", "languageCode": "es" } }
+  ]
+}

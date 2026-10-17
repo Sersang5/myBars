@@ -1,0 +1,7 @@
+{
+  "suggestions": [
+    { "queryPrediction": { "text": { "text": "bar tortilla" } } },
+    { "placePrediction": { "place": "places/ChIJbar1", "placeId": "ChIJbar1", "structuredFormat": { "mainText": { "text": "Bar La Tortilla" }, "secondaryText": { "text": "Rúa Real 5, A Coruña, España" } } } },
+    { "placePrediction": { "place": "places/ChIJbar2", "placeId": "ChIJbar2", "structuredFormat": { "mainText": { "text": "Casa Pepe" }, "secondaryText": { "text": "Calle Mayor 1, Madrid" } } } }
+  ]
+}

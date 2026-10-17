@@ -1,0 +1,12 @@
+{
+  "id": "ChIJrural",
+  "displayName": { "text": "Taberna do Campo", "languageCode": "es" },
+  "formattedAddress": "Lugar do Campo 2, A Coruña",
+  "location": { "latitude": 43.2, "longitude": -8.5 },
+  "googleMapsUri": "https://maps.google.com/?cid=333",
+  "addressComponents": [
+    { "longText": "Lugar do Campo", "shortText": "Lugar do Campo", "types": ["route"] },
+    { "longText": "A Coruña", "shortText": "C", "types": ["administrative_area_level_2", "political"] },
+    { "longText": "Galicia", "shortText": "GA", "types": ["administrative_area_level_1", "political"] }
+  ]
+}

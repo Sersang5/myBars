@@ -1,0 +1,6 @@
+{
+  "places": [
+    { "id": "ChIJbar1", "displayName": { "text": "Bar La Tortilla", "languageCode": "es" }, "formattedAddress": "Rúa Real 5, 15003 A Coruña", "location": { "latitude": 43.3713, "longitude": -8.396 }, "rating": 4.6, "userRatingCount": 812, "priceLevel": "PRICE_LEVEL_MODERATE", "googleMapsUri": "https://maps.google.com/?cid=111" },
+    { "id": "ChIJbar2", "displayName": { "text": "Casa Pepe", "languageCode": "es" }, "formattedAddress": "Calle Mayor 1, Madrid", "location": { "latitude": 40.4168, "longitude": -3.7038 }, "googleMapsUri": "https://maps.google.com/?cid=222" }
+  ]
+}
