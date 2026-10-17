@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isAllowedEmail } from "@/lib/auth/allowed";
+import { unauthorizedResponseKind } from "@/lib/auth/unauthorized";
 import { isPublicPath } from "@/lib/auth/public-paths";
 
 export async function middleware(request: NextRequest) {
@@ -28,6 +29,9 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user || !isAllowedEmail(user.email, process.env.ALLOWED_EMAIL ?? "")) {
+    if (unauthorizedResponseKind(request.nextUrl.pathname) === "json") {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";

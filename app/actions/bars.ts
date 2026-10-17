@@ -1,5 +1,6 @@
 "use server";
 
+import { isAllowedEmail } from "@/lib/auth/allowed";
 import { revalidatePath } from "next/cache";
 import type { z } from "zod";
 import {
@@ -43,7 +44,7 @@ async function run<T>(
   try {
     const sb = await createServerSupabase();
     const { data } = await sb.auth.getUser();
-    if (!data.user) return { ok: false, error: NOT_SIGNED_IN };
+    if (!data.user || !isAllowedEmail(data.user.email, process.env.ALLOWED_EMAIL ?? "")) return { ok: false, error: NOT_SIGNED_IN };
     const result = await fn(await getDeps());
     if (opts.revalidate) {
       revalidatePath("/bars");

@@ -1,5 +1,6 @@
 import "server-only";
 import { NextResponse } from "next/server";
+import { isAllowedEmail } from "@/lib/auth/allowed";
 import { createServerSupabase } from "@/lib/db/server";
 import { PlacesError } from "@/lib/places/types";
 
@@ -14,8 +15,10 @@ const STATUS_BY_KIND = {
 export async function requireUser(): Promise<boolean> {
   const sb = await createServerSupabase();
   const { data } = await sb.auth.getUser();
-  return !!data.user;
+  return !!data.user && isAllowedEmail(data.user.email, process.env.ALLOWED_EMAIL ?? "");
 }
+
+export const badRequest = () => NextResponse.json({ error: "bad_request" }, { status: 400 });
 
 export const unauthorized = () => NextResponse.json({ error: "unauthorized" }, { status: 401 });
 

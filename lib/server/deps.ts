@@ -6,12 +6,8 @@ import { createServerSupabase } from "@/lib/db/server";
 import { getServerEnv } from "@/lib/env";
 import { createCachedDetails } from "@/lib/places/cache";
 import { createPlacesClient } from "@/lib/places/client";
+import { madridToday } from "./today";
 import type { PlaceDetails, PlacesClient } from "@/lib/places/types";
-
-/** Local date (yyyy-mm-dd) in Europe/Madrid. */
-export function madridToday(now: Date = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(now);
-}
 
 export async function getDeps(): Promise<{
   repo: BarsRepo;
