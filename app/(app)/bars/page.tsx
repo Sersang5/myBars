@@ -10,6 +10,7 @@ import { BarForm, type BarFormValue } from "@/components/bars/BarForm";
 import { PlaceSearch } from "@/components/bars/PlaceSearch";
 import { BottomSheet } from "@/components/BottomSheet";
 import { useCity } from "@/components/CityProvider";
+import { SavedElsewhere, useSavedCity, type SavedCity } from "@/components/SavedElsewhere";
 import { useCityBars } from "@/hooks/useCityBars";
 import { defaultSort, filterBars, sortBars } from "@/lib/bars/query";
 import type { BarFilters as Filters, BarSort } from "@/lib/bars/types";
@@ -52,6 +53,8 @@ export default function BarsPage() {
   const [searchText, setSearchText] = useState("");
   const [sort, setSort] = useState<BarSort | null>(null);
   const [mode, setMode] = useState<Mode>({ kind: "list" });
+  const [elsewhere, setElsewhere] = useState<(SavedCity & { barId: string; notice?: string }) | null>(null);
+  const savedCity = useSavedCity();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -118,12 +121,16 @@ export default function BarsPage() {
   async function create(place: Suggestion, value: BarFormValue): Promise<string | null> {
     const res = await addVisitedBarAction(place.googlePlaceId, value);
     if (!res.ok) return res.error;
+    const notice = res.data.existed ? "Ya estaba en tu lista" : undefined;
+    const other = await savedCity.check(res.data);
+    if (other) {
+      setElsewhere({ ...other, barId: res.data.barId, notice });
+      close();
+      return null;
+    }
+    setElsewhere(null);
     await load();
-    setMode({
-      kind: "detail",
-      barId: res.data.barId,
-      notice: res.data.existed ? "Ya estaba en tu lista" : undefined,
-    });
+    setMode({ kind: "detail", barId: res.data.barId, notice });
     return null;
   }
 
@@ -184,6 +191,17 @@ export default function BarsPage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {elsewhere && (
+        <SavedElsewhere
+          saved={elsewhere}
+          onView={() => {
+            savedCity.switchTo(elsewhere);
+            setMode({ kind: "detail", barId: elsewhere.barId, notice: elsewhere.notice });
+            setElsewhere(null);
+          }}
+        />
       )}
 
       {loading ? (

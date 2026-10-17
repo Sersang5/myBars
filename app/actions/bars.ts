@@ -11,6 +11,7 @@ import {
   reasonSchema,
   statusSchema,
 } from "@/lib/bars/schemas";
+import type { SaveResult } from "@/lib/bars/service";
 import type { Bar } from "@/lib/bars/types";
 import type { CityRow, TagRow } from "@/lib/db/types";
 import { createServerSupabase } from "@/lib/db/server";
@@ -84,7 +85,7 @@ export async function listTagsAction(): Promise<ActionResult<TagRow[]>> {
 export async function addVisitedBarAction(
   googlePlaceId: string,
   input: unknown,
-): Promise<ActionResult<{ barId: string; existed: boolean }>> {
+): Promise<ActionResult<SaveResult>> {
   const id = parse(googlePlaceIdSchema, googlePlaceId);
   const data = parse(barInputSchema, input);
   if (!id || !data) return invalid;
@@ -94,7 +95,7 @@ export async function addVisitedBarAction(
 export async function addPendingBarAction(
   googlePlaceId: string,
   reason: string | null,
-): Promise<ActionResult<{ barId: string; existed: boolean }>> {
+): Promise<ActionResult<SaveResult>> {
   const id = parse(googlePlaceIdSchema, googlePlaceId);
   const r = parse(reasonSchema, reason);
   if (!id || !r) return invalid;

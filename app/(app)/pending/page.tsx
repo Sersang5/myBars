@@ -8,6 +8,7 @@ import { BarForm, type BarFormValue } from "@/components/bars/BarForm";
 import { PlaceSearch } from "@/components/bars/PlaceSearch";
 import { BottomSheet } from "@/components/BottomSheet";
 import { useCity } from "@/components/CityProvider";
+import { SavedElsewhere, useSavedCity, type SavedCity } from "@/components/SavedElsewhere";
 import { useCityBars } from "@/hooks/useCityBars";
 import { PendingCard } from "@/components/pending/PendingCard";
 import { sortPending } from "@/lib/bars/query";
@@ -24,9 +25,12 @@ export default function PendingPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [mode, setMode] = useState<Mode>({ kind: "list" });
+  const [elsewhere, setElsewhere] = useState<SavedCity | null>(null);
+  const savedCity = useSavedCity();
 
   const load = useCallback(async () => {
     setNotice(null);
+    setElsewhere(null);
     return reload();
   }, [reload]);
 
@@ -38,11 +42,18 @@ export default function PendingPage() {
     if (adding) return;
     setAdding(true);
     setActionError(null);
+    setElsewhere(null);
     close();
     try {
       const res = await addPendingBarAction(place.googlePlaceId, null);
       if (!res.ok) {
         setActionError(res.error);
+        return;
+      }
+      const other = await savedCity.check(res.data);
+      if (other) {
+        setNotice(null);
+        setElsewhere(other);
         return;
       }
       const fresh = await reload();
@@ -82,6 +93,15 @@ export default function PendingPage() {
         <p role="status" className="rounded-lg bg-amber-100 p-3 text-sm text-amber-900">
           {notice}
         </p>
+      )}
+      {elsewhere && (
+        <SavedElsewhere
+          saved={elsewhere}
+          onView={() => {
+            savedCity.switchTo(elsewhere);
+            setElsewhere(null);
+          }}
+        />
       )}
       {actionError && (
         <p role="alert" className="text-red-600">

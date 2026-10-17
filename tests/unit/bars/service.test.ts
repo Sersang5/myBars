@@ -72,6 +72,7 @@ describe("bars service", () => {
 
     const cities = await repo.listCities();
     expect(cities.map((c) => c.name)).toEqual(["A Coruña"]);
+    expect(res).toMatchObject({ cityId: cities[0].id, cityName: "A Coruña" });
 
     const stored = await repo.getBar(res.barId);
     expect(stored).toMatchObject({
@@ -94,7 +95,7 @@ describe("bars service", () => {
     const { service, repo } = ctx;
     const first = await service.addVisitedBar(bar.googlePlaceId, {});
     const second = await service.addVisitedBar(bar.googlePlaceId, {});
-    expect(second).toEqual({ barId: first.barId, existed: true });
+    expect(second).toEqual({ barId: first.barId, existed: true, cityId: first.cityId, cityName: "A Coruña" });
     expect(repo.counts()).toMatchObject({ places: 1, bars: 1, visits: 1 });
   });
 
@@ -102,7 +103,7 @@ describe("bars service", () => {
     const { service, repo } = ctx;
     const first = await service.addVisitedBar(bar.googlePlaceId, {});
     const res = await service.addPendingBar(bar.googlePlaceId, "me lo recomendó Ana");
-    expect(res).toEqual({ barId: first.barId, existed: true });
+    expect(res).toEqual({ barId: first.barId, existed: true, cityId: first.cityId, cityName: "A Coruña" });
     expect((await repo.getBar(first.barId))!.status).toBe("visited");
   });
 
@@ -110,6 +111,8 @@ describe("bars service", () => {
     const { service, repo } = ctx;
     const res = await service.addPendingBar(bar.googlePlaceId, "probar la tortilla");
     expect(res.existed).toBe(false);
+    const [city] = await repo.listCities();
+    expect(res).toMatchObject({ cityId: city.id, cityName: "A Coruña" });
     expect(await repo.getBar(res.barId)).toMatchObject({
       status: "pending",
       pendingReason: "probar la tortilla",
@@ -121,7 +124,7 @@ describe("bars service", () => {
     const { service, repo } = ctx;
     const pending = await service.addPendingBar(bar.googlePlaceId, null);
     const res = await service.addVisitedBar(bar.googlePlaceId, { ratingLocal: 4, priceLevel: 2 });
-    expect(res).toEqual({ barId: pending.barId, existed: true });
+    expect(res).toEqual({ barId: pending.barId, existed: true, cityId: pending.cityId, cityName: "A Coruña" });
     const stored = await repo.getBar(pending.barId);
     expect(stored).toMatchObject({ status: "visited", ratingLocal: 4, priceLevel: 2 });
     expect(stored!.visits).toHaveLength(1);
@@ -141,6 +144,7 @@ describe("bars service", () => {
     const noCity: PlaceDetails = { ...rural, googlePlaceId: "ChIJnocity", addressComponents: [] };
     const { service, repo, places } = setup({ known: [noCity] });
     const res = await service.addVisitedBar("ChIJnocity", {});
+    expect(res).toMatchObject({ existed: false, cityId: null, cityName: null });
     expect((await repo.getBar(res.barId))!.cityId).toBeNull();
     expect(places.textSearch).not.toHaveBeenCalled();
   });

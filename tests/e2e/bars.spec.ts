@@ -56,3 +56,24 @@ test("add bars, filter by tag and search", async ({ page }) => {
   await page.getByRole("searchbox", { name: "Buscar", exact: true }).fill("zzz");
   await expect(cards).toHaveCount(0);
 });
+
+test("a bar saved into another city shows a notice that switches to it", async ({ page }) => {
+  await page.goto("/bars");
+  await addFirstCity(page);
+
+  await page.getByRole("button", { name: "Añadir bar" }).last().click();
+  await page.getByRole("searchbox", { name: "Buscar lugar" }).fill("Bar");
+  await page.getByRole("button", { name: /Bar Oleiros/ }).click();
+  await page.getByRole("dialog", { name: "Bar Oleiros" }).getByRole("button", { name: "Guardar", exact: true }).click();
+
+  // Still on A Coruña: the bar is not in this list, but the notice says where it went.
+  const notice = page.getByRole("status").filter({ hasText: "Guardado en Oleiros" });
+  await expect(notice).toBeVisible();
+  await expect(page.getByRole("button", { name: /Última visita/ })).toHaveCount(0);
+
+  await notice.getByRole("button", { name: "Ver" }).click();
+  await expect(page.getByRole("button", { name: /Oleiros/ }).first()).toBeVisible();
+  const detail = page.getByRole("dialog", { name: "Bar Oleiros" });
+  await expect(detail.getByRole("button", { name: "Editar" })).toBeVisible();
+  await expect(notice).toBeHidden();
+});

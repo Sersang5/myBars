@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { addPendingBarAction } from "@/app/actions/bars";
+import { SavedElsewhere, useSavedCity, type SavedCity } from "@/components/SavedElsewhere";
 import type { ExploreResult } from "@/lib/explorer/run";
 import { formatDistance, formatPrice, formatStarsCount } from "@/lib/ui/format";
 
@@ -12,6 +13,8 @@ export function ResultCard({ result }: { result: ExploreResult }) {
     result.status === "pending" ? "saved" : result.status === "visited" ? "owned" : "idle",
   );
   const [error, setError] = useState<string | null>(null);
+  const [elsewhere, setElsewhere] = useState<SavedCity | null>(null);
+  const savedCity = useSavedCity();
   const price = formatPrice(result.priceLevel);
 
   async function onSave() {
@@ -20,8 +23,10 @@ export function ResultCard({ result }: { result: ExploreResult }) {
     setError(null);
     try {
       const res = await addPendingBarAction(result.googlePlaceId, result.reason);
-      if (res.ok) setSave(res.data.existed && result.status === "visited" ? "owned" : "saved");
-      else {
+      if (res.ok) {
+        setSave(res.data.existed && result.status === "visited" ? "owned" : "saved");
+        setElsewhere(await savedCity.check(res.data));
+      } else {
         setError(res.error);
         setSave("idle");
       }
@@ -54,6 +59,15 @@ export function ResultCard({ result }: { result: ExploreResult }) {
         {result.reason && <p className="text-sm">{result.reason}</p>}
         {result.quote && <p className="text-sm italic text-zinc-600 dark:text-zinc-400">“{result.quote}”</p>}
       </div>
+      {elsewhere && (
+        <SavedElsewhere
+          saved={elsewhere}
+          onView={() => {
+            savedCity.switchTo(elsewhere);
+            setElsewhere(null);
+          }}
+        />
+      )}
       {error && (
         <p role="alert" className="text-sm text-red-600">
           {error}

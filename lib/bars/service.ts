@@ -3,7 +3,7 @@ import { extractCityName } from "@/lib/places/city";
 import type { LatLng, PlaceDetails, PlacesClient } from "@/lib/places/types";
 import type { BarFields, BarInput, BarsRepo } from "./repo";
 import { normalizeTagName } from "./tags";
-import type { Rating } from "./types";
+import type { Bar, Rating } from "./types";
 
 const DEFAULT_CITY_CENTER: LatLng = { lat: 40.4168, lng: -3.7038 };
 const CITY_RADIUS_M = 50000;
@@ -15,6 +15,9 @@ export type BarsServiceDeps = {
   /** ISO date, yyyy-mm-dd. */
   today: () => string;
 };
+
+/** Outcome of saving a bar; the city lets the UI tell when it landed outside the selected city. */
+export type SaveResult = { barId: string; existed: boolean; cityId: string | null; cityName: string | null };
 
 const FIELD_KEYS = ["ratingLocal", "ratingService", "ratingFood", "ratingOverallManual", "priceLevel", "notes"] as const;
 
@@ -75,12 +78,18 @@ export function createBarsService({ repo, places, details, today }: BarsServiceD
     googlePlaceId: string,
     status: "visited" | "pending",
     fields: Partial<BarFields>,
-  ): Promise<string> {
+  ): Promise<SaveResult> {
     const d = await details(googlePlaceId);
     const cityName = extractCityName(d.addressComponents);
     const city = cityName ? await resolveCity(cityName, d.location) : null;
     const place = await repo.upsertPlace(d, city?.id ?? null);
-    return repo.insertBar(place.id, status, fields);
+    const barId = await repo.insertBar(place.id, status, fields);
+    return { barId, existed: false, cityId: city?.id ?? null, cityName: city?.name ?? null };
+  }
+
+  async function existingResult(bar: Bar): Promise<SaveResult> {
+    const city = bar.cityId ? (await repo.listCities()).find((c) => c.id === bar.cityId) : undefined;
+    return { barId: bar.id, existed: true, cityId: bar.cityId, cityName: city?.name ?? null };
   }
 
   async function updateBar(barId: string, input: BarInput): Promise<void> {
@@ -95,23 +104,22 @@ export function createBarsService({ repo, places, details, today }: BarsServiceD
     await repo.addVisit(barId, today(), null);
   }
 
-  async function addVisitedBar(googlePlaceId: string, input: BarInput) {
+  async function addVisitedBar(googlePlaceId: string, input: BarInput): Promise<SaveResult> {
     const existing = await repo.findBarByGooglePlaceId(googlePlaceId);
     if (existing) {
       if (existing.status === "pending") await markVisited(existing.id, input);
-      return { barId: existing.id, existed: true };
+      return existingResult(existing);
     }
-    const barId = await createBar(googlePlaceId, "visited", pickFields(input));
-    if (input.tags) await applyTags(barId, input.tags);
-    await repo.addVisit(barId, today(), null);
-    return { barId, existed: false };
+    const created = await createBar(googlePlaceId, "visited", pickFields(input));
+    if (input.tags) await applyTags(created.barId, input.tags);
+    await repo.addVisit(created.barId, today(), null);
+    return created;
   }
 
-  async function addPendingBar(googlePlaceId: string, reason: string | null) {
+  async function addPendingBar(googlePlaceId: string, reason: string | null): Promise<SaveResult> {
     const existing = await repo.findBarByGooglePlaceId(googlePlaceId);
-    if (existing) return { barId: existing.id, existed: true };
-    const barId = await createBar(googlePlaceId, "pending", { pendingReason: reason });
-    return { barId, existed: false };
+    if (existing) return existingResult(existing);
+    return createBar(googlePlaceId, "pending", { pendingReason: reason });
   }
 
   return {
