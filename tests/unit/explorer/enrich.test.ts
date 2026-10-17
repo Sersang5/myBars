@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { enrich } from "@/lib/explorer/enrich";
 import { haversineM } from "@/lib/explorer/geo";
+import { PlacesError } from "@/lib/places/types";
 import { detailsOf, summary } from "./helpers";
 
 const center = { lat: 43.3623, lng: -8.4115 };
@@ -41,5 +42,24 @@ describe("enrich", () => {
     const s = { ...summary("a"), status: "pending" as const };
     const [c] = await enrich(async () => detailsOf(s), [s], center);
     expect(c.status).toBe("pending");
+  });
+
+  it("rethrows the first PlacesError when every detail fails", async () => {
+    const list = [summary("a"), summary("b")].map(withStatus);
+    const p = enrich(
+      async (id) => {
+        throw new PlacesError(id === "a" ? "quota" : "auth", id);
+      },
+      list,
+      center,
+    );
+    await expect(p).rejects.toBeInstanceOf(PlacesError);
+    await expect(p).rejects.toMatchObject({ kind: "quota" });
+  });
+
+  it("returns empty when every detail fails with a non-Places error, or nothing was asked", async () => {
+    const list = [summary("a")].map(withStatus);
+    expect(await enrich(async () => Promise.reject(new Error("boom")), list, center)).toEqual([]);
+    expect(await enrich(async () => Promise.reject(new PlacesError("quota", "q")), [], center)).toEqual([]);
   });
 });

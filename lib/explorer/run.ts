@@ -1,4 +1,4 @@
-import type { Llm } from "@/lib/llm/client";
+import { errorKind, type Llm } from "@/lib/llm/client";
 import type { LocationScope, PlaceDetails, PlacesClient } from "@/lib/places/types";
 import { enrich } from "./enrich";
 import { filterCandidates } from "./filter";
@@ -96,8 +96,14 @@ export async function runExplore(deps: ExploreDeps, req: ExploreRequest): Promis
     return { results: [], intent, degraded: false, message: NO_RESULTS_MESSAGE };
   }
 
+  let ranked: RankedResult[] | null = null;
   try {
-    const ranked = await rank(deps.llm, prompt, intent, candidates, own);
+    ranked = await rank(deps.llm, prompt, intent, candidates, own);
+  } catch (e) {
+    console.error("[explore] rank failed", errorKind(e), e instanceof Error ? e.message : String(e));
+  }
+
+  if (ranked) {
     const byId = new Map(candidates.map((c) => [c.googlePlaceId, c]));
     const ownById = new Map(own.map((o) => [o.googlePlaceId, o]));
     const results: ExploreResult[] = [];
@@ -111,8 +117,6 @@ export async function runExplore(deps: ExploreDeps, req: ExploreRequest): Promis
       if (o) results.push(fromOwnBar(o, r, req.scope.center));
     }
     if (results.length > 0) return { results, intent, degraded: false, message: null };
-  } catch {
-    // fall through to the degraded ranking
   }
 
   const results = [...candidates]

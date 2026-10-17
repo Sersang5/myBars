@@ -176,3 +176,40 @@ describe("errors", () => {
     expect(err.kind).toBe("network");
   });
 });
+
+describe("timeouts", () => {
+  it("gives every request an abort signal", async () => {
+    const f = mockFetch("{}");
+    const client = createPlacesClient("K", asFetch(f));
+    await client.textSearch("x", scope);
+    await client.autocomplete("x", null);
+    await client.details("id").catch(() => undefined);
+    for (const call of f.mock.calls) expect(call[1]!.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("maps an aborted or timed-out fetch to network", async () => {
+    for (const name of ["AbortError", "TimeoutError"]) {
+      const f = vi.fn(async () => {
+        throw new DOMException("stopped", name);
+      });
+      await expect(createPlacesClient("K", asFetch(f)).details("id")).rejects.toMatchObject({
+        name: "PlacesError",
+        kind: "network",
+      });
+    }
+  });
+
+  it("maps a timeout while reading the body to network", async () => {
+    const f = vi.fn(
+      async () =>
+        ({
+          ok: true,
+          status: 200,
+          json: async () => {
+            throw new DOMException("stopped", "TimeoutError");
+          },
+        }) as unknown as Response,
+    );
+    await expect(createPlacesClient("K", asFetch(f)).details("id")).rejects.toMatchObject({ kind: "network" });
+  });
+});

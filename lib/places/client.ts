@@ -42,6 +42,11 @@ const AUTOCOMPLETE_MASK =
   "suggestions.placePrediction.placeId,suggestions.placePrediction.structuredFormat";
 
 const MAX_BIAS_RADIUS_M = 50000;
+const REQUEST_TIMEOUT_MS = 8000;
+
+function isAbort(e: unknown): boolean {
+  return e instanceof Error && (e.name === "AbortError" || e.name === "TimeoutError");
+}
 
 function circle(center: LatLng, radius: number) {
   return {
@@ -93,6 +98,7 @@ export function createPlacesClient(
           "X-Goog-FieldMask": mask,
         },
         body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } catch (e) {
       throw new PlacesError(
@@ -107,7 +113,9 @@ export function createPlacesClient(
       );
     try {
       return await res.json();
-    } catch {
+    } catch (e) {
+      // The timeout signal also covers reading the body.
+      if (isAbort(e)) throw new PlacesError("network", (e as Error).message);
       throw new PlacesError("unknown", "Invalid JSON from Places API");
     }
   }

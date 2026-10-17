@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
 import { interpret } from "@/lib/explorer/interpret";
 import { LlmError, type Llm } from "@/lib/llm/client";
@@ -16,6 +16,10 @@ function fakeLlm(response: unknown) {
   return { llm, calls };
 }
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("interpret", () => {
   it("includes the prompt in the user message and returns the intent", async () => {
     const { llm, calls } = fakeLlm(croquetas);
@@ -24,15 +28,30 @@ describe("interpret", () => {
     expect(intent.searchQueries).toEqual(["mejores croquetas", "bar de croquetas caseras"]);
   });
 
-  it("limits searchQueries to 1-3 non-empty strings", async () => {
+  it("asks with a 10 s timeout", async () => {
     const { llm, calls } = fakeLlm(croquetas);
     await interpret(llm, "x");
-    const schema = calls[0].schema;
-    const base = { placeType: null, wantsNewOnly: false, reviewSignals: [] };
-    expect(schema.safeParse({ ...base, searchQueries: [] }).success).toBe(false);
-    expect(schema.safeParse({ ...base, searchQueries: ["a", "b", "c", "d"] }).success).toBe(false);
-    expect(schema.safeParse({ ...base, searchQueries: [""] }).success).toBe(false);
-    expect(schema.safeParse({ ...base, searchQueries: ["a", "b", "c"] }).success).toBe(true);
+    expect((calls[0] as { timeoutMs?: number }).timeoutMs).toBe(10_000);
+  });
+
+  it("keeps at most 3 non-empty search queries", async () => {
+    const base = { wantsNewOnly: false, reviewSignals: [] };
+    const { llm } = fakeLlm({ ...base, searchQueries: ["a", " ", "b", "c", "d"] });
+    expect((await interpret(llm, "x")).searchQueries).toEqual(["a", "b", "c"]);
+  });
+
+  it("falls back to the prompt when no usable query comes back", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    for (const searchQueries of [[], ["", "  "]]) {
+      const { llm } = fakeLlm({ wantsNewOnly: true, reviewSignals: [], searchQueries });
+      expect((await interpret(llm, "croquetas")).searchQueries).toEqual(["croquetas"]);
+    }
+    expect(error).toHaveBeenCalledWith("[explore] interpret failed", "ZodError", expect.any(String));
+  });
+
+  it("does not return a placeType", async () => {
+    const { llm } = fakeLlm(croquetas);
+    expect(await interpret(llm, "x")).not.toHaveProperty("placeType");
   });
 
   it("detects wantsNewOnly from the fixture", async () => {
@@ -41,7 +60,8 @@ describe("interpret", () => {
     expect(intent.wantsNewOnly).toBe(true);
   });
 
-  it("falls back to the raw prompt when the llm throws", async () => {
+  it("falls back to the raw prompt when the llm throws, and logs it", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const llm: Llm = {
       async json() {
         throw new LlmError("api", "boom");
@@ -49,9 +69,9 @@ describe("interpret", () => {
     };
     expect(await interpret(llm, "croquetas")).toEqual({
       searchQueries: ["croquetas"],
-      placeType: null,
       wantsNewOnly: false,
       reviewSignals: [],
     });
+    expect(error).toHaveBeenCalledWith("[explore] interpret failed", "api", "boom");
   });
 });

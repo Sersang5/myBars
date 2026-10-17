@@ -3,7 +3,6 @@ import type { LatLng, PlaceDetails } from "@/lib/places/types";
 
 export type Intent = {
   searchQueries: string[];
-  placeType: string | null;
   wantsNewOnly: boolean;
   reviewSignals: string[];
 };

@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
 import { runExplore, type ExploreDeps } from "@/lib/explorer/run";
 import type { Intent, OwnBarContext } from "@/lib/explorer/types";
-import type { Llm } from "@/lib/llm/client";
+import { LlmError, type Llm } from "@/lib/llm/client";
 import { PlacesError, type LocationScope, type PlacesClient } from "@/lib/places/types";
 import { detailsOf, summary } from "./helpers";
 
@@ -34,7 +34,6 @@ function setup(
 ) {
   const intent: Intent = {
     searchQueries: ["q"],
-    placeType: null,
     wantsNewOnly: opts.wantsNewOnly ?? false,
     reviewSignals: [],
   };
@@ -63,6 +62,10 @@ function setup(
 
 const req = (novelty: "auto" | "new" | "include" = "auto", prompt = "croquetas") => ({ prompt, scope, novelty });
 const oneRank: RankItem[] = [{ googlePlaceId: "b", score: 1, reason: "r", quote: null }];
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("runExplore", () => {
   it("rejects an empty prompt", async () => {
@@ -111,19 +114,23 @@ describe("runExplore", () => {
     expect(no.rankCalls()[0].user).toContain("Mis bares:");
   });
 
-  it("falls back to popularity order when rank fails", async () => {
-    const { deps } = setup({ rank: new Error("llm down") });
+  it("falls back to popularity order when rank fails, and logs it", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { deps } = setup({ rank: new LlmError("api", "llm down") });
     const res = await runExplore(deps, req());
     expect(res.degraded).toBe(true);
     expect(res.message).toBe("No se pudo analizar las reseñas; resultados ordenados por valoración de Google.");
     expect(res.results.map((r) => r.googlePlaceId)).toEqual(["b", "a", "c"]);
     expect(res.results.every((r) => r.reason === null && r.quote === null)).toBe(true);
+    expect(error).toHaveBeenCalledWith("[explore] rank failed", "api", "llm down");
   });
 
   it("caps the degraded list at 8", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const found = Array.from({ length: 10 }, (_, i) => summary("p" + i, 4, 10 + i));
     const res = await runExplore(setup({ rank: new Error("x"), found }).deps, req());
     expect(res.results).toHaveLength(8);
+    expect(error).toHaveBeenCalledWith("[explore] rank failed", "Error", "x");
   });
 
   it("returns an empty result without calling rank when nothing is left", async () => {
@@ -162,5 +169,20 @@ describe("runExplore", () => {
       },
     } as unknown as PlacesClient;
     await expect(runExplore(deps, req())).rejects.toMatchObject({ kind: "quota" });
+  });
+
+  it("rethrows a PlacesError when every Place Details call fails", async () => {
+    const { deps, rankCalls } = setup({ rank: oneRank });
+    deps.details = async () => {
+      throw new PlacesError("auth", "denied");
+    };
+    await expect(runExplore(deps, req())).rejects.toMatchObject({ kind: "auth" });
+    expect(rankCalls()).toHaveLength(0);
+  });
+
+  it("does not hide bugs outside the rank call behind the degraded fallback", async () => {
+    const { deps } = setup({ rank: [{ googlePlaceId: "own1", score: 80, reason: "r", quote: null }] });
+    deps.ownBars = [{ ...own, location: undefined as never }];
+    await expect(runExplore(deps, req("include"))).rejects.toThrow(TypeError);
   });
 });

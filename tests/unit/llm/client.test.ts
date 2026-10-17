@@ -17,17 +17,19 @@ type SentBody = {
 
 function fakeClient(impl: (body: Record<string, unknown>) => Promise<unknown>) {
   const bodies: Record<string, unknown>[] = [];
+  const options: unknown[] = [];
   const client = {
     beta: {
       messages: {
-        create: (body: Record<string, unknown>) => {
+        create: (body: Record<string, unknown>, opts?: unknown) => {
           bodies.push(body);
+          options.push(opts);
           return impl(body);
         },
       },
     },
   } as unknown as Pick<Anthropic, "beta">;
-  return { client, bodies };
+  return { client, bodies, options };
 }
 
 const ok = (text: string, stop_reason = "end_turn") => ({
@@ -81,5 +83,28 @@ describe("createClaudeLlm", () => {
     await expect(createClaudeLlm("k", "m", client).json({ system: "S", user: "U", schema })).rejects.toMatchObject({
       kind: "api",
     });
+  });
+
+  it("passes a per-call timeout with a single retry to the SDK", async () => {
+    const { client, options } = fakeClient(async () => ok('{"a":1}'));
+    const llm = createClaudeLlm("k", "m", client);
+    await llm.json({ system: "S", user: "U", schema, timeoutMs: 10_000 });
+    expect(options[0]).toEqual({ timeout: 10_000, maxRetries: 1 });
+  });
+
+  it("maps SDK and fetch timeouts to api", async () => {
+    const errors = [
+      new Anthropic.APIConnectionTimeoutError(),
+      new DOMException("timed out", "TimeoutError"),
+      new DOMException("aborted", "AbortError"),
+    ];
+    for (const err of errors) {
+      const { client } = fakeClient(async () => {
+        throw err;
+      });
+      const p = createClaudeLlm("k", "m", client).json({ system: "S", user: "U", schema, timeoutMs: 1 });
+      await expect(p).rejects.toBeInstanceOf(LlmError);
+      await expect(p).rejects.toMatchObject({ kind: "api" });
+    }
   });
 });
