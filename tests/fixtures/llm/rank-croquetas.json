@@ -1,0 +1,8 @@
+{
+  "results": [
+    { "googlePlaceId": "p1", "score": 70, "reason": "Croquetas muy elogiadas.", "quote": "Las croquetas  CREMOSAS son lo mejor" },
+    { "googlePlaceId": "p2", "score": 90, "reason": "Croquetas de jamón top.", "quote": "frase inventada que no existe" },
+    { "googlePlaceId": "zzz", "score": 99, "reason": "No es candidato.", "quote": null },
+    { "googlePlaceId": "p1", "score": 40, "reason": "Duplicado peor.", "quote": null }
+  ]
+}
