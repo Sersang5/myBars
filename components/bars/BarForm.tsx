@@ -7,6 +7,7 @@ import { formatRating } from "@/lib/ui/format";
 import { PricePicker } from "@/components/PricePicker";
 import { Stars } from "@/components/Stars";
 import { TagInput, type TagValue } from "@/components/TagInput";
+import { safeSubmit } from "@/lib/ui/submit";
 
 export type BarFormValue = {
   ratingLocal: number | null;
@@ -47,15 +48,17 @@ export function BarForm({ initial, tagSuggestions, submitLabel, onSubmit }: Prop
   async function submit() {
     setBusy(true);
     setError(null);
-    const err = await onSubmit({
-      ratingLocal,
-      ratingService,
-      ratingFood,
-      ratingOverallManual: manual,
-      priceLevel: price,
-      notes,
-      tags,
-    });
+    const err = await safeSubmit(() =>
+      onSubmit({
+        ratingLocal,
+        ratingService,
+        ratingFood,
+        ratingOverallManual: manual,
+        priceLevel: price,
+        notes,
+        tags,
+      }),
+    );
     if (err) {
       setError(err);
       setBusy(false);

@@ -102,8 +102,10 @@ describe("sortBars", () => {
 });
 
 describe("defaultSort", () => {
-  it("tag when filtering by tags, else overall", () => {
+  it("tag only when filtering by exactly one tag, else overall", () => {
     expect(defaultSort({ tagIds: ["x"] })).toBe("tag");
+    expect(defaultSort({ tagIds: ["x", "y"] })).toBe("overall");
+    expect(defaultSort({ tagIds: [] })).toBe("overall");
     expect(defaultSort({})).toBe("overall");
   });
 });

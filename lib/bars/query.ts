@@ -93,7 +93,7 @@ export function sortBars(bars: Bar[], sort: BarSort, tagId?: string): Bar[] {
 }
 
 export function defaultSort(f: BarFilters): BarSort {
-  return f.tagIds && f.tagIds.length > 0 ? "tag" : "overall";
+  return f.tagIds?.length === 1 ? "tag" : "overall";
 }
 
 export function cardTags(bar: Bar, highlightTagIds: string[], n = 3): BarTag[] {
