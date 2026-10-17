@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { addPendingBarAction } from "@/app/actions/bars";
 import type { ExploreResult } from "@/lib/explorer/run";
-import { formatDistance, formatGoogle, formatPrice } from "@/lib/ui/format";
+import { formatDistance, formatPrice, formatStarsCount } from "@/lib/ui/format";
 
 type SaveState = "idle" | "saving" | "saved" | "owned";
 
@@ -33,7 +33,7 @@ export function ResultCard({ result }: { result: ExploreResult }) {
 
   const btn = "flex min-h-11 items-center rounded-lg border border-zinc-300 px-3 font-medium dark:border-zinc-700";
   const rating =
-    result.rating === null ? "Sin valoración" : formatGoogle(result.rating, result.userRatingCount).replace("Google: ", "");
+    result.rating === null ? "Sin valoración" : formatStarsCount(result.rating, result.userRatingCount);
   const label = save === "owned" ? "Ya en Mis Bares" : save === "saved" ? "Guardado" : "Guardar en Pendientes";
   return (
     <li className="space-y-2 rounded-xl border border-zinc-200 p-3 dark:border-zinc-800">

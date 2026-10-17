@@ -1,26 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { exploreErrorResponse } from "@/lib/explorer/errors";
 import { selectOwnBars } from "@/lib/explorer/own";
 import { exploreRequestSchema } from "@/lib/explorer/request";
 import { runExplore } from "@/lib/explorer/run";
-import { PlacesError, type LocationScope } from "@/lib/places/types";
+import type { LocationScope } from "@/lib/places/types";
 import { getDeps } from "@/lib/server/deps";
 import { badRequest, requireUser, unauthorized } from "@/lib/server/places-route";
 
 export const maxDuration = 60;
 
 const CITY_RADIUS_M = 10_000;
-
-function errorResponse(err: unknown): NextResponse {
-  if (err instanceof PlacesError) {
-    if (err.kind === "auth")
-      return NextResponse.json({ error: "auth", message: "La clave de Google Maps no es válida" }, { status: 502 });
-    if (err.kind === "quota")
-      return NextResponse.json({ error: "quota", message: "Se ha superado la cuota de Google Maps" }, { status: 429 });
-    return NextResponse.json({ error: err.kind, message: "Error al consultar Google Maps" }, { status: 502 });
-  }
-  console.error(err);
-  return NextResponse.json({ error: "unknown", message: "Algo ha fallado. Inténtalo de nuevo." }, { status: 500 });
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -62,6 +51,6 @@ export async function POST(req: NextRequest) {
     );
     return NextResponse.json(response);
   } catch (err) {
-    return errorResponse(err);
+    return exploreErrorResponse(err);
   }
 }

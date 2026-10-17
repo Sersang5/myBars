@@ -142,6 +142,30 @@ describe("errors", () => {
     expect(err.kind).toBe(kind);
   });
 
+  it("HTTP 400 with API_KEY_INVALID -> auth", async () => {
+    const body = JSON.stringify({
+      error: { code: 400, status: "INVALID_ARGUMENT", details: [{ reason: "API_KEY_INVALID" }] },
+    });
+    const client = createPlacesClient("K", asFetch(mockFetch(body, 400)));
+    const err = await client.details("x").catch((e) => e);
+    expect(err.kind).toBe("auth");
+  });
+
+  it("HTTP 403 PERMISSION_DENIED -> auth", async () => {
+    const body = JSON.stringify({ error: { code: 403, status: "PERMISSION_DENIED" } });
+    const client = createPlacesClient("K", asFetch(mockFetch(body, 403)));
+    const err = await client.details("x").catch((e) => e);
+    expect(err.kind).toBe("auth");
+  });
+
+  it("RESOURCE_EXHAUSTED body -> quota; non-JSON 400 stays unknown", async () => {
+    const quota = JSON.stringify({ error: { status: "RESOURCE_EXHAUSTED" } });
+    const c1 = createPlacesClient("K", asFetch(mockFetch(quota, 400)));
+    expect((await c1.details("x").catch((e) => e)).kind).toBe("quota");
+    const c2 = createPlacesClient("K", asFetch(mockFetch("not json", 400)));
+    expect((await c2.details("x").catch((e) => e)).kind).toBe("unknown");
+  });
+
   it("fetch throwing -> network", async () => {
     const f = vi.fn(async () => {
       throw new TypeError("boom");

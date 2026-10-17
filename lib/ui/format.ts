@@ -33,10 +33,15 @@ export function formatTagLine(tags: BarTag[]): string {
   return tags.map((t) => (t.rating === null ? t.name : `${t.name} ${formatRating(t.rating)}`)).join(" · ");
 }
 
+/** "★4,5 (1.234 reseñas)" */
+export function formatStarsCount(rating: number, count: number): string {
+  const n = String(count).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `★${formatRating(rating)} (${n} ${count === 1 ? "reseña" : "reseñas"})`;
+}
+
 export function formatGoogle(rating: number | null, count: number): string {
   if (rating === null) return "Google: sin valoraciones";
-  const n = String(count).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  return `Google: ★${formatRating(rating)} (${n} ${count === 1 ? "reseña" : "reseñas"})`;
+  return `Google: ${formatStarsCount(rating, count)}`;
 }
 
 /** "850 m" under 1 km, "2,3 km" from 1 km. */

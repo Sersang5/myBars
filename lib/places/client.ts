@@ -52,11 +52,25 @@ function circle(center: LatLng, radius: number) {
   };
 }
 
-function kindForStatus(status: number): PlacesErrorKind {
-  if (status === 401 || status === 403) return "auth";
-  if (status === 429) return "quota";
-  if (status === 404) return "not_found";
+type GoogleErrorBody = { error?: { status?: string; details?: { reason?: string }[] } };
+
+function kindForError(httpStatus: number, body: GoogleErrorBody | null): PlacesErrorKind {
+  const status = body?.error?.status;
+  const reasons = body?.error?.details?.map((d) => d.reason) ?? [];
+  if (reasons.includes("API_KEY_INVALID") || status === "PERMISSION_DENIED" || httpStatus === 401 || httpStatus === 403)
+    return "auth";
+  if (httpStatus === 429 || status === "RESOURCE_EXHAUSTED") return "quota";
+  if (httpStatus === 404) return "not_found";
   return "unknown";
+}
+
+async function readErrorBody(res: Response): Promise<GoogleErrorBody | null> {
+  try {
+    const parsed: unknown = await res.json();
+    return parsed && typeof parsed === "object" ? (parsed as GoogleErrorBody) : null;
+  } catch {
+    return null;
+  }
 }
 
 export function createPlacesClient(
@@ -88,7 +102,7 @@ export function createPlacesClient(
     }
     if (!res.ok)
       throw new PlacesError(
-        kindForStatus(res.status),
+        kindForError(res.status, await readErrorBody(res)),
         `Places API HTTP ${res.status}`,
       );
     try {

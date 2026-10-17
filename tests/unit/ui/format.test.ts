@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDistance, formatGoogle, formatLastVisit, formatPrice, formatRating, formatTagLine, shortAddress } from "@/lib/ui/format";
+import { formatDistance, formatGoogle, formatStarsCount, formatLastVisit, formatPrice, formatRating, formatTagLine, shortAddress } from "@/lib/ui/format";
 
 describe("formatPrice", () => {
   it("renders euro signs", () => {
@@ -69,5 +69,12 @@ describe("formatDistance", () => {
   it("uses km with a decimal comma from 1 km", () => {
     expect(formatDistance(2300)).toBe("2,3 km");
     expect(formatDistance(1000)).toBe("1,0 km");
+  });
+});
+
+describe("formatStarsCount", () => {
+  it("formats rating and count", () => {
+    expect(formatStarsCount(4.5, 1234)).toBe("★4,5 (1.234 reseñas)");
+    expect(formatStarsCount(5, 1)).toBe("★5 (1 reseña)");
   });
 });
