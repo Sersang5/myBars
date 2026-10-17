@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatGoogle, formatLastVisit, formatPrice, formatRating, formatTagLine, shortAddress } from "@/lib/ui/format";
+import { formatDistance, formatGoogle, formatLastVisit, formatPrice, formatRating, formatTagLine, shortAddress } from "@/lib/ui/format";
 
 describe("formatPrice", () => {
   it("renders euro signs", () => {
@@ -59,4 +59,15 @@ describe("formatGoogle", () => {
     expect(formatGoogle(4, 1)).toBe("Google: ★4 (1 reseña)");
   });
   it("handles missing rating", () => expect(formatGoogle(null, 0)).toBe("Google: sin valoraciones"));
+});
+
+describe("formatDistance", () => {
+  it("uses metres under 1 km", () => {
+    expect(formatDistance(850)).toBe("850 m");
+    expect(formatDistance(849.6)).toBe("850 m");
+  });
+  it("uses km with a decimal comma from 1 km", () => {
+    expect(formatDistance(2300)).toBe("2,3 km");
+    expect(formatDistance(1000)).toBe("1,0 km");
+  });
 });

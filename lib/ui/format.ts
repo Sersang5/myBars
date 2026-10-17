@@ -38,3 +38,9 @@ export function formatGoogle(rating: number | null, count: number): string {
   const n = String(count).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   return `Google: ★${formatRating(rating)} (${n} ${count === 1 ? "reseña" : "reseñas"})`;
 }
+
+/** "850 m" under 1 km, "2,3 km" from 1 km. */
+export function formatDistance(meters: number): string {
+  if (meters < 1000) return `${Math.round(meters)} m`;
+  return `${(meters / 1000).toFixed(1).replace(".", ",")} km`;
+}
