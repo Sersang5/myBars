@@ -49,6 +49,17 @@ describe("textSearch", () => {
     expect(res[1]).toMatchObject({ rating: null, userRatingCount: 0, priceLevel: null });
   });
 
+  it("clamps bias radius to 50000 and pageSize to 1..20", async () => {
+    const send = async (s: typeof scope | { kind: "near"; center: { lat: number; lng: number }; radiusM: number }, max?: number) => {
+      const f = mockFetch("{}");
+      await createPlacesClient("K", asFetch(f)).textSearch("x", s, { max });
+      return JSON.parse(f.mock.calls[0][1]!.body as string);
+    };
+    expect((await send({ ...scope, radiusM: 80000 })).locationBias.circle.radius).toBe(50000);
+    expect((await send(scope, 5)).pageSize).toBe(5);
+    expect((await send(scope, 0)).pageSize).toBe(1);
+  });
+
   it("returns [] when no places", async () => {
     const client = createPlacesClient("K", asFetch(mockFetch("{}")));
     expect(await client.textSearch("x", scope)).toEqual([]);

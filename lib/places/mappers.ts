@@ -36,7 +36,7 @@ export function mapReview(r: Raw): Review {
   const review: Review = {
     text: r.text?.text ?? r.originalText?.text ?? "",
     rating: r.rating ?? 0,
-    relativeTime: r.relativeTimeDescription ?? "",
+    relativeTime: r.relativePublishTimeDescription ?? "",
   };
   const author = r.authorAttribution?.displayName;
   if (author) review.author = author;

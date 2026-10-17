@@ -16,7 +16,7 @@
     { "longText": "A Coruña", "shortText": "C", "types": ["administrative_area_level_2", "political"] }
   ],
   "reviews": [
-    { "rating": 5, "relativeTimeDescription": "hace un mes", "text": { "text": "La mejor tortilla.", "languageCode": "es" }, "authorAttribution": { "displayName": "Ana" } },
-    { "rating": 4, "relativeTimeDescription": "hace 2 meses", "text": { "text": "Muy bien.", "languageCode": "es" } }
+    { "rating": 5, "relativePublishTimeDescription": "hace un mes", "text": { "text": "La mejor tortilla.", "languageCode": "es" }, "authorAttribution": { "displayName": "Ana" } },
+    { "rating": 4, "relativePublishTimeDescription": "hace 2 meses", "text": { "text": "Muy bien.", "languageCode": "es" } }
   ]
 }

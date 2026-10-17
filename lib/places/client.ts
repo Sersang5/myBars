@@ -1,5 +1,10 @@
 import { mapPlaceDetails, mapPlaceSummary, mapSuggestions } from "./mappers";
-import { PlacesError, type LatLng, type PlacesClient, type PlacesErrorKind } from "./types";
+import {
+  PlacesError,
+  type LatLng,
+  type PlacesClient,
+  type PlacesErrorKind,
+} from "./types";
 
 const BASE = "https://places.googleapis.com/v1";
 const LANGUAGE = "es";
@@ -36,8 +41,15 @@ const DETAILS_MASK = [
 const AUTOCOMPLETE_MASK =
   "suggestions.placePrediction.placeId,suggestions.placePrediction.structuredFormat";
 
+const MAX_BIAS_RADIUS_M = 50000;
+
 function circle(center: LatLng, radius: number) {
-  return { circle: { center: { latitude: center.lat, longitude: center.lng }, radius } };
+  return {
+    circle: {
+      center: { latitude: center.lat, longitude: center.lng },
+      radius: Math.min(radius, MAX_BIAS_RADIUS_M),
+    },
+  };
 }
 
 function kindForStatus(status: number): PlacesErrorKind {
@@ -47,8 +59,16 @@ function kindForStatus(status: number): PlacesErrorKind {
   return "unknown";
 }
 
-export function createPlacesClient(apiKey: string, fetchImpl: typeof fetch = fetch): PlacesClient {
-  async function request(url: string, method: "GET" | "POST", mask: string, body?: unknown) {
+export function createPlacesClient(
+  apiKey: string,
+  fetchImpl: typeof fetch = fetch,
+): PlacesClient {
+  async function request(
+    url: string,
+    method: "GET" | "POST",
+    mask: string,
+    body?: unknown,
+  ) {
     let res: Response;
     try {
       res = await fetchImpl(url, {
@@ -61,9 +81,16 @@ export function createPlacesClient(apiKey: string, fetchImpl: typeof fetch = fet
         body: body === undefined ? undefined : JSON.stringify(body),
       });
     } catch (e) {
-      throw new PlacesError("network", e instanceof Error ? e.message : "network error");
+      throw new PlacesError(
+        "network",
+        e instanceof Error ? e.message : "network error",
+      );
     }
-    if (!res.ok) throw new PlacesError(kindForStatus(res.status), `Places API HTTP ${res.status}`);
+    if (!res.ok)
+      throw new PlacesError(
+        kindForStatus(res.status),
+        `Places API HTTP ${res.status}`,
+      );
     try {
       return await res.json();
     } catch {
@@ -76,18 +103,33 @@ export function createPlacesClient(apiKey: string, fetchImpl: typeof fetch = fet
       const body: Record<string, unknown> = { input, languageCode: LANGUAGE };
       if (bias) body.locationBias = circle(bias, AUTOCOMPLETE_RADIUS_M);
       if (opts?.types?.length) body.includedPrimaryTypes = opts.types;
-      return mapSuggestions(await request(`${BASE}/places:autocomplete`, "POST", AUTOCOMPLETE_MASK, body));
+      return mapSuggestions(
+        await request(
+          `${BASE}/places:autocomplete`,
+          "POST",
+          AUTOCOMPLETE_MASK,
+          body,
+        ),
+      );
     },
 
     async textSearch(query, scope, opts) {
       const body: Record<string, unknown> = {
         textQuery: query,
         languageCode: LANGUAGE,
-        pageSize: Math.min(opts?.max ?? MAX_PAGE_SIZE, MAX_PAGE_SIZE),
+        pageSize: Math.max(
+          1,
+          Math.min(opts?.max ?? MAX_PAGE_SIZE, MAX_PAGE_SIZE),
+        ),
         locationBias: circle(scope.center, scope.radiusM),
       };
       if (opts?.includedType) body.includedType = opts.includedType;
-      const res = await request(`${BASE}/places:searchText`, "POST", SEARCH_MASK, body);
+      const res = await request(
+        `${BASE}/places:searchText`,
+        "POST",
+        SEARCH_MASK,
+        body,
+      );
       return ((res?.places ?? []) as unknown[]).map(mapPlaceSummary);
     },
 
