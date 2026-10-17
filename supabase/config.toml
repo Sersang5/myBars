@@ -244,6 +244,11 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# Magic link with the 6-digit code too, so login works when the link opens in another browser.
+[auth.email.template.magic_link]
+subject = "Tu acceso a MyBars"
+content_path = "./supabase/templates/magic_link.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"

@@ -9,5 +9,7 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) return NextResponse.redirect(`${origin}/bars`);
   }
-  return NextResponse.redirect(`${origin}/login`);
+  // Typically the link was opened in a different browser than the one that asked for it
+  // (iOS home-screen PWA vs Safari), so the PKCE verifier is missing.
+  return NextResponse.redirect(`${origin}/login?error=link`);
 }

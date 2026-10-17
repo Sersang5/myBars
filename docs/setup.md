@@ -37,7 +37,25 @@ MyBars es una PWA personal (un solo usuario). Necesita tres servicios externos: 
    - **Site URL**: `https://<tu-dominio-vercel>`
    - **Redirect URLs**: añade `https://<tu-dominio-vercel>/auth/callback` (y `http://localhost:3000/auth/callback` para desarrollo).
    - Los despliegues de *Preview* de Vercel tienen otra URL: añade un comodín como `https://*-<proyecto>.vercel.app/**` o usa solo Production.
-6. En *Project Settings > API* copia la **Project URL** (`NEXT_PUBLIC_SUPABASE_URL`) y la clave **anon** (`NEXT_PUBLIC_SUPABASE_ANON_KEY`).
+6. En *Authentication > Email Templates > Magic Link* añade el código de 6 dígitos junto al enlace. Así puedes entrar
+   aunque el enlace se abra en otro navegador (en iPhone, la PWA de la pantalla de inicio y Safari no comparten
+   sesión, y el enlace solo funciona en el navegador donde lo pediste). Plantilla recomendada:
+
+   - **Subject**: `Tu acceso a MyBars`
+   - **Body**:
+
+     ```html
+     <h2>Entra en MyBars</h2>
+     <p><a href="{{ .ConfirmationURL }}">Entrar en MyBars</a></p>
+     <p>O escribe este código en la pantalla de login: <strong>{{ .Token }}</strong></p>
+     <p>Si abriste MyBars desde la pantalla de inicio del móvil, usa el código: el enlace se abre en otro navegador.</p>
+     ```
+
+   En la pantalla de login, tras pulsar *Enviar enlace*, aparece el campo *Código del correo*.
+7. Ten en cuenta que el SMTP por defecto de Supabase tiene un límite bajo de envíos por hora (unos pocos correos;
+   consulta *Authentication > Rate Limits*). Si pides varios enlaces seguidos puede que no llegue ninguno durante
+   un rato. Para más margen configura un SMTP propio en *Project Settings > Authentication > SMTP Settings*.
+8. En *Project Settings > API* copia la **Project URL** (`NEXT_PUBLIC_SUPABASE_URL`) y la clave **anon** (`NEXT_PUBLIC_SUPABASE_ANON_KEY`).
    Nunca uses la service role key en la aplicación desplegada.
 
 ## 4. Vercel
@@ -59,7 +77,7 @@ MyBars es una PWA personal (un solo usuario). Necesita tres servicios externos: 
 
 ## 5. Instalar la PWA en el móvil
 
-1. Abre `https://<tu-dominio-vercel>` en el móvil y entra con tu email (recibirás un enlace mágico).
+1. Abre `https://<tu-dominio-vercel>` en el móvil y entra con tu email (recibirás un enlace mágico y un código de 6 dígitos; dentro de la PWA instalada usa el código).
 2. iPhone (Safari): *Compartir > Añadir a pantalla de inicio*. Android (Chrome): menú ⋮ > *Instalar aplicación* / *Añadir a pantalla de inicio*.
 
 ## 6. Desarrollo local
@@ -74,6 +92,8 @@ npm run dev                 # http://localhost:3000
 ```
 
 - Con `supabase start`, los emails de login se leen en Mailpit: <http://127.0.0.1:54324>.
+  La plantilla local del enlace mágico (con el código de 6 dígitos) está en `supabase/templates/magic_link.html`
+  y se configura en `supabase/config.toml`; si cambias cualquiera de los dos, reinicia con `npx supabase stop && npx supabase start`.
 - Para trabajar sin gastar cuota de Google, arranca con `PLACES_FAKE=1 npm run dev` (usa los datos de `tests/fixtures/places`).
 - Parar Supabase: `npx supabase stop`.
 
