@@ -68,4 +68,7 @@ test("sign in with the 6-digit code from the email", async ({ page }) => {
   await page.getByRole("button", { name: "Entrar" }).click();
 
   await expect(page).toHaveURL(/\/bars$/);
+  // Signed in: the app shell loads (no bounce back to /login). Let its requests finish before teardown.
+  await expect(page.getByRole("navigation")).toBeVisible();
+  await page.waitForLoadState("networkidle");
 });
