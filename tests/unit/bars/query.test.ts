@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardTags, defaultSort, filterBars, lastVisit, sortBars } from "@/lib/bars/query";
+import { cardTags, defaultSort, filterBars, lastVisit, sortBars, sortPending } from "@/lib/bars/query";
 import { makeBar } from "./fixtures";
 
 const today = new Date("2026-10-17T12:00:00Z");
@@ -122,5 +122,16 @@ describe("lastVisit", () => {
   it("returns max date or null", () => {
     expect(lastVisit(makeBar())).toBeNull();
     expect(lastVisit(makeBar({ visits: [visit("1", "2026-02-01"), visit("2", "2026-09-01")] }))).toBe("2026-09-01");
+  });
+});
+
+describe("sortPending", () => {
+  it("orders by createdAt desc, ties by name, without mutating", () => {
+    const old = makeBar({ id: "1", name: "A", createdAt: "2026-01-01T00:00:00Z" });
+    const newB = makeBar({ id: "2", name: "Zeta", createdAt: "2026-03-01T00:00:00Z" });
+    const newA = makeBar({ id: "3", name: "Álamo", createdAt: "2026-03-01T00:00:00Z" });
+    const input = [old, newB, newA];
+    expect(sortPending(input).map((b) => b.id)).toEqual(["3", "2", "1"]);
+    expect(input.map((b) => b.id)).toEqual(["1", "2", "3"]);
   });
 });

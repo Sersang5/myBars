@@ -109,3 +109,10 @@ export function cardTags(bar: Bar, highlightTagIds: string[], n = 3): BarTag[] {
     })
     .slice(0, n);
 }
+
+/** Pending bars: newest first, ties by name. Does not mutate the input. */
+export function sortPending(bars: Bar[]): Bar[] {
+  return [...bars].sort((a, b) =>
+    a.createdAt === b.createdAt ? a.name.localeCompare(b.name, "es") : a.createdAt < b.createdAt ? 1 : -1,
+  );
+}

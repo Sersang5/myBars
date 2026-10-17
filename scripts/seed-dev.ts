@@ -42,6 +42,7 @@ const catalog = [
   make("seed-1", "Bar Pepe", "Rúa Real 12", 4.4, 1234, 2),
   make("seed-2", "Café Nube", "Praza de Lugo 3", 4.7, 310, 1),
   make("seed-3", "Taberna O Fogar", "Rúa Franja 8", 4.1, 87, 3),
+  make("seed-4", "Vermutería Nova", "Rúa Olmos 5", 4.5, 42, 2),
 ];
 
 async function main() {
@@ -78,10 +79,13 @@ async function main() {
     { ratingLocal: 5, ratingService: 4, ratingFood: 3.5, priceLevel: 1 as const, notes: "Buen café con leche", tags: [{ name: "café", rating: 4.5 }, { name: "tortilla", rating: 3 }] },
     { ratingLocal: 3.5, ratingService: 3.5, ratingFood: 4, priceLevel: 3 as const, notes: "", tags: [{ name: "vermut", rating: 4 }] },
   ];
-  for (let i = 0; i < catalog.length; i++) {
+  for (let i = 0; i < inputs.length; i++) {
     const r = await service.addVisitedBar(catalog[i].googlePlaceId, inputs[i]);
     console.log(`${catalog[i].name}: ${r.existed ? "already existed" : "created"}`);
   }
+
+  const pending = await service.addPendingBar("seed-4", "Me lo recomendó Marta");
+  console.log(`Vermutería Nova (pending): ${pending.existed ? "already existed" : "created"}`);
 
   const city = (await repo.listCities()).find((c) => c.name === "A Coruña")!;
   const bars = await repo.listBars(city.id, "visited");
