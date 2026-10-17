@@ -20,8 +20,15 @@ export async function GET(req: NextRequest) {
     if (hasLat && !(Math.abs(latN) <= 90 && Math.abs(lngN) <= 180)) return badRequest();
     const bias = hasLat ? { lat: latN, lng: lngN } : null;
 
+    const typesParam = params.get("types");
+    let types: string[] | undefined;
+    if (typesParam) {
+      types = typesParam.split(",");
+      if (types.length > 5 || !types.every((t) => /^[a-z_]+$/.test(t))) return badRequest();
+    }
+
     const { places } = await getDeps();
-    return NextResponse.json(await places.autocomplete(q, bias));
+    return NextResponse.json(await places.autocomplete(q, bias, types ? { types } : undefined));
   } catch (err) {
     return placesErrorResponse(err);
   }
