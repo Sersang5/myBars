@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { createPlacesClient } from "@/lib/places/client";
-import { PlacesError } from "@/lib/places/types";
+import { PlacesError, type LocationScope } from "@/lib/places/types";
 import { detailsReviewSource } from "@/lib/places/reviews";
 
 const fixture = (n: string) => fs.readFileSync(path.join(__dirname, "../../fixtures/places", n), "utf8");
@@ -50,7 +50,7 @@ describe("textSearch", () => {
   });
 
   it("clamps bias radius to 50000 and pageSize to 1..20", async () => {
-    const send = async (s: typeof scope | { kind: "near"; center: { lat: number; lng: number }; radiusM: number }, max?: number) => {
+    const send = async (s: LocationScope, max?: number) => {
       const f = mockFetch("{}");
       await createPlacesClient("K", asFetch(f)).textSearch("x", s, { max });
       return JSON.parse(f.mock.calls[0][1]!.body as string);
