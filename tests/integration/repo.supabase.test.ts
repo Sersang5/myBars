@@ -1,7 +1,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createSupabaseBarsRepo } from "@/lib/bars/repo.supabase";
 import { createBarsService } from "@/lib/bars/service";
+import { createCachedDetails } from "@/lib/places/cache";
 import type { PlaceDetails, PlacesClient } from "@/lib/places/types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -61,9 +62,9 @@ describe("createSupabaseBarsRepo", () => {
     // Cache: seeded on first insert, readable and updatable via PlaceStore.
     expect((await repo.get(details.googlePlaceId))?.details.name).toBe("Bar Integración");
     const fetchedAt = new Date("2026-10-01T10:00:00Z");
-    await repo.put({ ...details, name: "Bar Cacheado" }, fetchedAt);
+    await repo.put({ ...details, rating: 4.6, editorialSummary: "Cacheado" }, fetchedAt);
     const cached = await repo.get(details.googlePlaceId);
-    expect(cached?.details.name).toBe("Bar Cacheado");
+    expect(cached?.details.editorialSummary).toBe("Cacheado");
     expect(cached?.fetchedAt.toISOString()).toBe(fetchedAt.toISOString());
 
     const barId = await repo.insertBar(place.id, "visited", { ratingFood: 4.5, priceLevel: 2, notes: "Buenísimo" });
@@ -140,11 +141,37 @@ describe("createSupabaseBarsRepo", () => {
     const first = await service.addVisitedBar(d.googlePlaceId, { tags: [{ name: " Croquetas ", rating: 4 }] });
     const second = await service.addVisitedBar(d.googlePlaceId, {});
     expect(first.existed).toBe(false);
-    expect(second).toEqual({ barId: first.barId, existed: true });
+    expect(second).toEqual({ barId: first.barId, existed: true, cityId: first.cityId, cityName: "Vigo" });
 
     const bar = await repo.getBar(first.barId);
     expect(bar?.cityId).toBe((await repo.findCityByName("Vigo"))?.id);
     expect(bar?.tags.map((t) => t.name)).toEqual(["croquetas"]);
     expect(bar?.visits).toHaveLength(1);
+  });
+
+  it("caches details for a place that is not a bar yet, and keeps city_id when it becomes one", async () => {
+    const repo = createSupabaseBarsRepo(sb);
+    const d: PlaceDetails = { ...details, googlePlaceId: "ChIJint-explore-only", name: "Candidato" };
+    const client = { autocomplete: vi.fn(), textSearch: vi.fn(), details: vi.fn(async () => d) };
+    const cached = createCachedDetails(client as unknown as PlacesClient, repo);
+
+    expect(await repo.get(d.googlePlaceId)).toBeNull();
+    expect((await cached(d.googlePlaceId)).name).toBe("Candidato");
+    expect(client.details).toHaveBeenCalledTimes(1);
+
+    const { data: row } = await sb.from("places").select("*").eq("google_place_id", d.googlePlaceId).single();
+    expect(row).toMatchObject({ name: "Candidato", city_id: null, google_rating: 4.4, maps_url: d.mapsUrl });
+
+    // Second call within the TTL is served from the cache.
+    expect((await cached(d.googlePlaceId)).name).toBe("Candidato");
+    expect(client.details).toHaveBeenCalledTimes(1);
+
+    // Becoming a bar sets city_id; a later cache refresh must not clear it.
+    const city = await repo.insertCity({ name: "Ferrol", googlePlaceId: "ChIJint-ferrol", location: { lat: 43.48, lng: -8.23 } });
+    const place = await repo.upsertPlace(d, city.id);
+    expect(place.city_id).toBe(city.id);
+    await repo.put({ ...d, name: "Candidato 2" }, new Date());
+    const { data: after } = await sb.from("places").select("*").eq("google_place_id", d.googlePlaceId).single();
+    expect(after).toMatchObject({ id: place.id, city_id: city.id, name: "Candidato 2" });
   });
 });

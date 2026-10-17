@@ -64,6 +64,21 @@ function toColumns(f: Partial<BarFields>): Record<string, unknown> {
   return out;
 }
 
+/** Place columns derived from Google details, excluding city_id and the details cache. */
+function placeColumns(d: PlaceDetails) {
+  return {
+    name: d.name,
+    address: d.address,
+    lat: d.location.lat,
+    lng: d.location.lng,
+    google_rating: d.rating,
+    google_user_rating_count: d.userRatingCount,
+    google_price_level: d.priceLevel,
+    maps_url: d.mapsUrl,
+    photo_ref: d.photoRef,
+  };
+}
+
 export function createSupabaseBarsRepo(sb: SupabaseClient): BarsRepo {
   async function listGoogleIds(status: "visited" | "pending"): Promise<Set<string>> {
     const { data, error } = await sb.from("my_bars").select("places!inner(google_place_id)").eq("status", status);
@@ -92,10 +107,17 @@ export function createSupabaseBarsRepo(sb: SupabaseClient): BarsRepo {
     },
 
     async put(details, fetchedAt) {
-      const { error } = await sb
-        .from("places")
-        .update({ details_json: details, details_fetched_at: fetchedAt.toISOString() })
-        .eq("google_place_id", details.googlePlaceId);
+      // Upsert so Explorer candidates (not yet bars) are cached too. city_id is left out of the
+      // payload: new rows get null and existing rows keep theirs.
+      const { error } = await sb.from("places").upsert(
+        {
+          google_place_id: details.googlePlaceId,
+          ...placeColumns(details),
+          details_json: details,
+          details_fetched_at: fetchedAt.toISOString(),
+        },
+        { onConflict: "user_id,google_place_id" },
+      );
       fail("places.put", error);
     },
 
@@ -124,18 +146,7 @@ export function createSupabaseBarsRepo(sb: SupabaseClient): BarsRepo {
     },
 
     async upsertPlace(d, cityId) {
-      const columns = {
-        name: d.name,
-        address: d.address,
-        city_id: cityId,
-        lat: d.location.lat,
-        lng: d.location.lng,
-        google_rating: d.rating,
-        google_user_rating_count: d.userRatingCount,
-        google_price_level: d.priceLevel,
-        maps_url: d.mapsUrl,
-        photo_ref: d.photoRef,
-      };
+      const columns = { ...placeColumns(d), city_id: cityId };
       const { data: existing, error: findError } = await sb
         .from("places")
         .select("id")

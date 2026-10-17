@@ -61,6 +61,27 @@ export function createMemoryBarsRepo(): BarsRepo & {
     };
   }
 
+  function placeRow(d: PlaceDetails, cityId: string | null, existing: PlaceRow | undefined): PlaceRow {
+    return {
+      id: existing?.id ?? nextId("place"),
+      user_id: "user",
+      created_at: existing?.created_at ?? stamp(),
+      google_place_id: d.googlePlaceId,
+      name: d.name,
+      address: d.address,
+      city_id: cityId,
+      lat: d.location.lat,
+      lng: d.location.lng,
+      google_rating: d.rating,
+      google_user_rating_count: d.userRatingCount,
+      google_price_level: d.priceLevel,
+      maps_url: d.mapsUrl,
+      photo_ref: d.photoRef,
+      details_json: existing?.details_json ?? null,
+      details_fetched_at: existing?.details_fetched_at ?? null,
+    };
+  }
+
   const placeByGoogleId = (gid: string) => [...places.values()].find((p) => p.google_place_id === gid);
 
   return {
@@ -70,10 +91,12 @@ export function createMemoryBarsRepo(): BarsRepo & {
       return { details: p.details_json as PlaceDetails, fetchedAt: new Date(p.details_fetched_at) };
     },
     async put(details, fetchedAt) {
-      const p = placeByGoogleId(details.googlePlaceId);
-      if (!p) return;
-      p.details_json = details;
-      p.details_fetched_at = fetchedAt.toISOString();
+      // Mirrors the Supabase upsert: unknown places get a minimal row with city_id null.
+      const existing = placeByGoogleId(details.googlePlaceId);
+      const row = placeRow(details, existing?.city_id ?? null, existing);
+      row.details_json = details;
+      row.details_fetched_at = fetchedAt.toISOString();
+      places.set(row.id, row);
     },
     async findCityByName(name) {
       const n = name.toLowerCase();
@@ -97,24 +120,7 @@ export function createMemoryBarsRepo(): BarsRepo & {
     },
     async upsertPlace(d, cityId) {
       const existing = placeByGoogleId(d.googlePlaceId);
-      const row: PlaceRow = {
-        id: existing?.id ?? nextId("place"),
-        user_id: "user",
-        created_at: existing?.created_at ?? stamp(),
-        google_place_id: d.googlePlaceId,
-        name: d.name,
-        address: d.address,
-        city_id: cityId,
-        lat: d.location.lat,
-        lng: d.location.lng,
-        google_rating: d.rating,
-        google_user_rating_count: d.userRatingCount,
-        google_price_level: d.priceLevel,
-        maps_url: d.mapsUrl,
-        photo_ref: d.photoRef,
-        details_json: existing?.details_json ?? null,
-        details_fetched_at: existing?.details_fetched_at ?? null,
-      };
+      const row = placeRow(d, cityId, existing);
       places.set(row.id, row);
       return row;
     },
