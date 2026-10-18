@@ -6,7 +6,7 @@ import { useState } from "react";
 import { otpSendErrorMessage } from "@/lib/auth/otp-error";
 
 const LINK_ERROR =
-  "No se pudo validar el enlace. Ábrelo en el mismo navegador donde lo pediste, o usa el código de 6 dígitos.";
+  "No se pudo validar el enlace. Ábrelo en el mismo navegador donde lo pediste, o usa el código del correo.";
 
 function browserSupabase() {
   return createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
@@ -99,8 +99,8 @@ export function LoginForm({ linkError }: { linkError: boolean }) {
               <input
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                pattern="[0-9]{6}"
-                maxLength={6}
+                pattern="[0-9]{6,10}"
+                maxLength={10}
                 required
                 value={code}
                 onChange={(e) => setCode(e.target.value)}

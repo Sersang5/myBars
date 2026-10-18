@@ -31,7 +31,7 @@ async function newEmailText(email: string, before: Set<string>): Promise<string>
 }
 
 /**
- * The 6-digit code from the email (supabase/templates/magic_link.html includes {{ .Token }}).
+ * The 6-10 digit code from the email (supabase/templates/magic_link.html includes {{ .Token }}).
  * If the running local Supabase was started before that template existed, its default email has
  * no code; then issue a fresh one with the admin API so the UI path is still exercised.
  */
@@ -51,11 +51,11 @@ test("a magic link that cannot be validated explains what to do", async ({ page 
   await page.goto("/auth/callback?code=not-a-real-code");
   await expect(page).toHaveURL(/\/login\?error=link$/);
   await expect(page.getByRole("alert").filter({ hasText: "No se pudo validar" })).toHaveText(
-    "No se pudo validar el enlace. Ábrelo en el mismo navegador donde lo pediste, o usa el código de 6 dígitos.",
+    "No se pudo validar el enlace. Ábrelo en el mismo navegador donde lo pediste, o usa el código del correo.",
   );
 });
 
-test("sign in with the 6-digit code from the email", async ({ page }) => {
+test("sign in with the code from the email", async ({ page }) => {
   const email = process.env.ALLOWED_EMAIL!;
   await page.goto("/login");
   const before = await mailIds();
