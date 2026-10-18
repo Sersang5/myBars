@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listBarsAction, listTagsAction } from "@/app/actions/bars";
 import { useCity } from "@/components/CityProvider";
-import type { Bar } from "@/lib/bars/types";
-import type { TagRow } from "@/lib/db/types";
+import type { Bar, TagSummary } from "@/lib/bars/types";
 
 /**
  * Loads the current city's bars with the given status, plus all tags.
@@ -15,7 +14,7 @@ export function useCityBars(status: "visited" | "pending", errorMessage: string)
   const { city } = useCity();
   const cityId = city?.id ?? null;
   const [bars, setBars] = useState<Bar[]>([]);
-  const [tags, setTags] = useState<TagRow[]>([]);
+  const [tags, setTags] = useState<TagSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const latest = useRef(0);

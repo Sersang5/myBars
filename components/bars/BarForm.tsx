@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { overallRating } from "@/lib/bars/rating";
-import type { Bar } from "@/lib/bars/types";
+import { withDraftTag } from "@/lib/bars/tags";
+import type { Bar, TagSummary } from "@/lib/bars/types";
 import { formatRating } from "@/lib/ui/format";
 import { PricePicker } from "@/components/PricePicker";
 import { Stars } from "@/components/Stars";
@@ -21,7 +22,7 @@ export type BarFormValue = {
 
 type Props = {
   initial?: Bar;
-  tagSuggestions: string[];
+  tagSuggestions: TagSummary[];
   submitLabel: string;
   /** Resolves to an error message, or null on success. */
   onSubmit: (value: BarFormValue) => Promise<string | null>;
@@ -35,6 +36,7 @@ export function BarForm({ initial, tagSuggestions, submitLabel, onSubmit }: Prop
   const [price, setPrice] = useState<1 | 2 | 3 | 4 | null>(initial?.priceLevel ?? null);
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [tags, setTags] = useState<TagValue[]>(initial?.tags.map((t) => ({ name: t.name, rating: t.rating })) ?? []);
+  const [tagDraft, setTagDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,7 +58,7 @@ export function BarForm({ initial, tagSuggestions, submitLabel, onSubmit }: Prop
         ratingOverallManual: manual,
         priceLevel: price,
         notes,
-        tags,
+        tags: withDraftTag(tags, tagDraft),
       }),
     );
     if (err) {
@@ -103,7 +105,13 @@ export function BarForm({ initial, tagSuggestions, submitLabel, onSubmit }: Prop
       </div>
       <div>
         <span className="mb-1 block font-medium">Etiquetas</span>
-        <TagInput value={tags} onChange={setTags} suggestions={tagSuggestions} />
+        <TagInput
+          value={tags}
+          onChange={setTags}
+          draft={tagDraft}
+          onDraftChange={setTagDraft}
+          suggestions={tagSuggestions}
+        />
       </div>
       <label className="block">
         <span className="mb-1 block font-medium">Notas</span>

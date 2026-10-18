@@ -1,9 +1,6 @@
 import { overallRating } from "./rating";
-import type { Bar, BarFilters, BarSort, BarTag } from "./types";
-
-function fold(s: string): string {
-  return s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
-}
+import { foldText as fold } from "./tags";
+import type { Bar, BarFilters, BarSort, BarTag, TagFilterOption, TagSummary } from "./types";
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -108,6 +105,22 @@ export function cardTags(bar: Bar, highlightTagIds: string[], n = 3): BarTag[] {
       return b.rating - a.rating;
     })
     .slice(0, n);
+}
+
+/**
+ * Tags worth offering as filters for these bars (with how many of them use each), plus any
+ * still-existing selected tag. Most used first, ties by name.
+ */
+export function tagFilterOptions(bars: Bar[], allTags: TagSummary[], selected: string[]): TagFilterOption[] {
+  const counts = new Map<string, number>();
+  for (const bar of bars) {
+    for (const t of bar.tags) counts.set(t.tagId, (counts.get(t.tagId) ?? 0) + 1);
+  }
+  const keep = new Set(selected);
+  return allTags
+    .filter((t) => counts.has(t.id) || keep.has(t.id))
+    .map((t) => ({ id: t.id, name: t.name, count: counts.get(t.id) ?? 0 }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 /** Pending bars: newest first, ties by name. Does not mutate the input. */

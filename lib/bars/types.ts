@@ -40,3 +40,8 @@ export type BarFilters = {
 };
 
 export type BarSort = "overall" | "tag" | "recent" | "visits" | "name";
+
+/** A tag with how many of my bars (any city, any status) use it. */
+export type TagSummary = { id: string; name: string; barCount: number };
+
+export type TagFilterOption = { id: string; name: string; count: number };

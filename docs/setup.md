@@ -30,6 +30,9 @@ MyBars es una PWA personal (un solo usuario). Necesita tres servicios externos: 
    npx supabase db push
    ```
 
+   Repite `npx supabase db push` cada vez que el repo traiga migraciones nuevas en `supabase/migrations/`
+   (por ejemplo `0002_tag_management.sql`, necesaria para fusionar y limpiar etiquetas).
+
 3. En *Authentication > Sign In / Providers* (o *Settings*) desactiva **Allow new users to sign up**.
 4. En *Authentication > Users* pulsa *Add user > Create new user*, escribe tu email y marca *Auto Confirm User*.
    Ese email debe coincidir con `ALLOWED_EMAIL`.

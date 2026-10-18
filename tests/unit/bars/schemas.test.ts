@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { barInputSchema, ratingSchema } from "@/lib/bars/schemas";
+import { barInputSchema, ratingSchema, tagNameSchema } from "@/lib/bars/schemas";
 
 describe("barInputSchema", () => {
   it("accepts valid input", () => {
@@ -33,6 +33,12 @@ describe("barInputSchema", () => {
   it("rejects empty or too long tag names", () => {
     expect(barInputSchema.safeParse({ tags: [{ name: "", rating: null }] }).success).toBe(false);
     expect(barInputSchema.safeParse({ tags: [{ name: "x".repeat(61), rating: null }] }).success).toBe(false);
+  });
+
+  it("rejects whitespace-only tag names, also when renaming", () => {
+    expect(barInputSchema.safeParse({ tags: [{ name: "   ", rating: null }] }).success).toBe(false);
+    expect(tagNameSchema.safeParse("   ").success).toBe(false);
+    expect(tagNameSchema.safeParse(" Terraza ").success).toBe(true);
   });
 
   it("rejects notes over 5000 chars", () => {

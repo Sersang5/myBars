@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import type { TagRow } from "@/lib/db/types";
-import type { BarFilters as Filters } from "@/lib/bars/types";
+import type { BarFilters as Filters, TagFilterOption } from "@/lib/bars/types";
 import { Stars } from "@/components/Stars";
 
-type Props = { filters: Filters; tags: TagRow[]; onApply: (f: Filters) => void };
+type Props = {
+  filters: Filters;
+  /** Tags used by the bars on screen (plus any already selected). */
+  tags: TagFilterOption[];
+  onApply: (f: Filters) => void;
+  onManageTags: () => void;
+};
 
 const MONTHS = [1, 3, 6, 12];
 
@@ -29,7 +34,7 @@ const MINIMUMS = [
   ["Comida mínima", "minFood"],
 ] as const;
 
-export function BarFilters({ filters, tags, onApply }: Props) {
+export function BarFilters({ filters, tags, onApply, onManageTags }: Props) {
   const [draft, setDraft] = useState<Filters>(filters);
   const set = (patch: Partial<Filters>) => setDraft((d) => ({ ...d, ...patch }));
   const h = "mb-1 block font-medium";
@@ -37,9 +42,14 @@ export function BarFilters({ filters, tags, onApply }: Props) {
   return (
     <div className="space-y-4">
       <div>
-        <span className={h}>Etiquetas</span>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <span className="font-medium">Etiquetas</span>
+          <button type="button" onClick={onManageTags} className="min-h-11 px-1 text-sm text-amber-700 underline dark:text-amber-500">
+            Gestionar etiquetas
+          </button>
+        </div>
         {tags.length === 0 ? (
-          <p className="text-sm text-zinc-500">Aún no tienes etiquetas</p>
+          <p className="text-sm text-zinc-500">Ningún bar de esta ciudad tiene etiquetas</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {tags.map((t) => {
@@ -52,7 +62,7 @@ export function BarFilters({ filters, tags, onApply }: Props) {
                   onClick={() => set({ tagIds: toggle(draft.tagIds, t.id) })}
                   className={chip(active)}
                 >
-                  {t.name}
+                  {t.name} <span className={active ? "text-amber-100" : "text-zinc-500"}>{t.count}</span>
                 </button>
               );
             })}

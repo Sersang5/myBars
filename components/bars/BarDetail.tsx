@@ -13,9 +13,11 @@ type Props = {
   onChanged: () => Promise<void>;
   onEdit: () => void;
   onDeleted: () => Promise<void>;
+  /** Shows the ranking of bars for this tag. */
+  onTagSelect?: (tagId: string) => void;
 };
 
-export function BarDetail({ bar, notice, onChanged, onEdit, onDeleted }: Props) {
+export function BarDetail({ bar, notice, onChanged, onEdit, onDeleted, onTagSelect }: Props) {
   const [visiting, setVisiting] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -90,7 +92,18 @@ export function BarDetail({ bar, notice, onChanged, onEdit, onDeleted }: Props) 
         <ul className="space-y-1">
           {bar.tags.map((t) => (
             <li key={t.tagId} className={row}>
-              <span>{t.name}</span>
+              {onTagSelect ? (
+                <button
+                  type="button"
+                  onClick={() => onTagSelect(t.tagId)}
+                  aria-label={`Ver ranking de ${t.name}`}
+                  className="min-h-11 text-left text-amber-700 underline dark:text-amber-500"
+                >
+                  {t.name}
+                </button>
+              ) : (
+                <span>{t.name}</span>
+              )}
               <Stars size="sm" value={t.rating} label={`Valoración de ${t.name}`} />
             </li>
           ))}

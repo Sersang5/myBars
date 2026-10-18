@@ -72,6 +72,28 @@ export function createBarsService({ repo, places, details, today }: BarsServiceD
       rows.push({ tagId: tag.id, rating });
     }
     await repo.setBarTags(barId, rows);
+    await repo.deleteUnusedTags();
+  }
+
+  /** Renames a tag; if another tag already has that name, merges into it instead. */
+  async function renameTag(tagId: string, rawName: string): Promise<{ tagId: string; merged: boolean }> {
+    const name = normalizeTagName(rawName);
+    const tags = await repo.listTags();
+    const current = tags.find((t) => t.id === tagId);
+    if (!current) throw new Error(`Tag not found: ${tagId}`);
+    if (current.name === name) return { tagId, merged: false };
+    const target = tags.find((t) => t.name === name);
+    if (target) {
+      await repo.mergeTags(tagId, target.id);
+      return { tagId: target.id, merged: true };
+    }
+    await repo.renameTag(tagId, name);
+    return { tagId, merged: false };
+  }
+
+  async function deleteBar(barId: string): Promise<void> {
+    await repo.deleteBar(barId);
+    await repo.deleteUnusedTags();
   }
 
   async function createBar(
@@ -130,7 +152,9 @@ export function createBarsService({ repo, places, details, today }: BarsServiceD
     updateBar,
     markVisited,
     addVisit: (barId: string, note: string | null) => repo.addVisit(barId, today(), note),
-    deleteBar: (barId: string) => repo.deleteBar(barId),
+    deleteBar,
+    renameTag,
+    deleteTag: (tagId: string) => repo.deleteTag(tagId),
   };
 }
 

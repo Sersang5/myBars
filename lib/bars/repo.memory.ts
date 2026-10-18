@@ -172,10 +172,39 @@ export function createMemoryBarsRepo(): BarsRepo & {
       return row;
     },
     async listTags() {
-      return [...tags.values()].sort((a, b) => a.name.localeCompare(b.name));
+      const uses = (tagId: string) => [...barTags.values()].filter((m) => m.has(tagId)).length;
+      return [...tags.values()]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((t) => ({ id: t.id, name: t.name, barCount: uses(t.id) }));
     },
     async setBarTags(barId, list) {
       barTags.set(barId, new Map(list.map((t) => [t.tagId, t.rating])));
+    },
+    async renameTag(id, name) {
+      const tag = tags.get(id);
+      if (!tag) throw new Error(`Tag not found: ${id}`);
+      if ([...tags.values()].some((t) => t.id !== id && t.name === name)) throw new Error(`Tag exists: ${name}`);
+      tag.name = name;
+    },
+    async mergeTags(sourceId, targetId) {
+      if (sourceId === targetId) return;
+      if (!tags.has(targetId)) throw new Error(`Tag not found: ${targetId}`);
+      for (const m of barTags.values()) {
+        if (!m.has(sourceId)) continue;
+        const source = m.get(sourceId)!;
+        m.set(targetId, m.get(targetId) ?? source);
+        m.delete(sourceId);
+      }
+      tags.delete(sourceId);
+    },
+    async deleteTag(id) {
+      for (const m of barTags.values()) m.delete(id);
+      tags.delete(id);
+    },
+    async deleteUnusedTags() {
+      for (const id of tags.keys()) {
+        if (![...barTags.values()].some((m) => m.has(id))) tags.delete(id);
+      }
     },
     async addVisit(barId, date, note) {
       const list = visits.get(barId) ?? [];

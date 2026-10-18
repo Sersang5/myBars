@@ -10,10 +10,11 @@ import {
   noteSchema,
   reasonSchema,
   statusSchema,
+  tagNameSchema,
 } from "@/lib/bars/schemas";
 import type { SaveResult } from "@/lib/bars/service";
-import type { Bar } from "@/lib/bars/types";
-import type { CityRow, TagRow } from "@/lib/db/types";
+import type { Bar, TagSummary } from "@/lib/bars/types";
+import type { CityRow } from "@/lib/db/types";
 import { createServerSupabase } from "@/lib/db/server";
 import { PlacesError } from "@/lib/places/types";
 import { getDeps } from "@/lib/server/deps";
@@ -78,8 +79,31 @@ export async function listCitiesAction(): Promise<ActionResult<CityRow[]>> {
   return run(({ repo }) => repo.listCities());
 }
 
-export async function listTagsAction(): Promise<ActionResult<TagRow[]>> {
+export async function listTagsAction(): Promise<ActionResult<TagSummary[]>> {
   return run(({ repo }) => repo.listTags());
+}
+
+/** Renames a tag, merging into an existing tag with that name; returns the surviving tag's id. */
+export async function renameTagAction(
+  tagId: string,
+  name: string,
+): Promise<ActionResult<{ tagId: string; merged: boolean }>> {
+  const id = parse(idSchema, tagId);
+  const n = parse(tagNameSchema, name);
+  if (!id || !n) return invalid;
+  return run(({ service }) => service.renameTag(id.value, n.value), { revalidate: true });
+}
+
+export async function deleteTagAction(tagId: string): Promise<ActionResult<null>> {
+  const id = parse(idSchema, tagId);
+  if (!id) return invalid;
+  return run(
+    async ({ service }) => {
+      await service.deleteTag(id.value);
+      return null;
+    },
+    { revalidate: true },
+  );
 }
 
 export async function addVisitedBarAction(

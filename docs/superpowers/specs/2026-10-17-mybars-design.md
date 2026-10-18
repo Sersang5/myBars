@@ -77,6 +77,7 @@ Reglas:
 - **Pendiente → visitado**: cambia `status`, abre el formulario de valoración y registra una visita con fecha de hoy.
 - **Ciudad**: se deriva del componente `locality` de Google al añadir un local; si la ciudad no existe se crea.
 - **Tags** globales (no por ciudad). Un tag sin nota es descriptivo ("terraza"); con nota participa en rankings.
+- **Gestión de tags**: se pueden renombrar y borrar. Renombrar con el nombre de otro tag existente los **fusiona** (función SQL `merge_tags`, atómica): si un bar tenía ambos, conserva la nota del destino o, si no tenía, la del origen. Los tags que se quedan sin bares se borran solos al editar o eliminar un bar (`delete_unused_tags`).
 - **Caché de `places`**: los detalles se consideran válidos 7 días (`details_fetched_at`).
 
 ## 5. Pantallas
@@ -87,15 +88,15 @@ Navegación: barra superior con selector de ciudad (persistido en el cliente) y 
 - Buscador de texto libre sobre nombre, tags y notas.
 - Chips de filtros activos (eliminables).
 - Tarjeta: nombre, nota global, precio, zona (barrio/calle corta), 2–3 tags con mejor nota, última visita. Si hay un filtro de tag activo, ese tag se muestra primero.
-- **Filtros** (hoja inferior): tags (multi, AND), nota global mínima, nota mínima por criterio (local/atención/comida), precio (multi), visitado en los últimos N meses.
+- **Filtros** (hoja inferior): tags (multi, AND; solo los usados en la ciudad, con nº de bares; enlace "Gestionar etiquetas"), nota global mínima, nota mínima por criterio (local/atención/comida), precio (multi), visitado en los últimos N meses.
 - **Orden**: nota global (defecto), nota del tag filtrado (defecto si hay un único tag filtrado), más reciente, más visitado, nombre.
 - Estado vacío: invitación a añadir el primer bar o explorar.
 
 ### 5.2 Mis Bares — detalle (hoja inferior)
-Estrellas por criterio, nota global, todos los tags con nota, notas, historial de visitas, botón "Registrar visita", "Abrir en Maps", "Editar", "Eliminar" (con confirmación), y datos de Google (nota y nº reseñas) como referencia.
+Estrellas por criterio, nota global, todos los tags con nota (tocar un tag abre su ranking: filtro solo por ese tag y orden por su nota), notas, historial de visitas, botón "Registrar visita", "Abrir en Maps", "Editar", "Eliminar" (con confirmación), y datos de Google (nota y nº reseñas) como referencia.
 
 ### 5.3 Alta / edición
-Botón flotante **+** → autocompletado de Google Places sesgado a la ciudad seleccionada → formulario: estrellas táctiles (medias estrellas), precio €–€€€€, tags (autocompletado de existentes + creación, cada uno con estrellas opcionales), notas. Al crear se registra una visita con fecha de hoy. Si el local ya existe en Mis Bares, se abre su ficha en lugar de duplicar.
+Botón flotante **+** → autocompletado de Google Places sesgado a la ciudad seleccionada → formulario: estrellas táctiles (medias estrellas), precio €–€€€€, tags (sugerencias de existentes ordenadas por uso e insensibles a acentos, chip "Crear «x»", cada uno con estrellas opcionales; un tag escrito sin confirmar también se guarda), notas. Al crear se registra una visita con fecha de hoy. Si el local ya existe en Mis Bares, se abre su ficha en lugar de duplicar.
 
 ### 5.4 Pendientes
 Lista de la ciudad seleccionada ordenada por fecha de guardado; tarjeta con nombre, nota de Google, precio, motivo de la sugerencia (`pending_reason`). Acciones: "Ya he ido → valorar", "Abrir en Maps", "Quitar".

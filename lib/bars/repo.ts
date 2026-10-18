@@ -1,7 +1,7 @@
 import type { PlaceStore } from "@/lib/places/cache";
 import type { LatLng, PlaceDetails } from "@/lib/places/types";
 import type { CityRow, PlaceRow, TagRow } from "@/lib/db/types";
-import type { Bar, Rating } from "./types";
+import type { Bar, Rating, TagSummary } from "./types";
 
 export type BarFields = {
   ratingLocal: Rating | null;
@@ -33,7 +33,18 @@ export interface BarsRepo extends PlaceStore {
   getBar(id: string): Promise<Bar | null>;
   /** `name` must already be normalized. */
   upsertTag(name: string): Promise<TagRow>;
-  listTags(): Promise<TagRow[]>;
+  /** All tags with their bar counts, by name. */
+  listTags(): Promise<TagSummary[]>;
   setBarTags(barId: string, tags: { tagId: string; rating: Rating | null }[]): Promise<void>;
+  /** `name` must already be normalized and not used by another tag. */
+  renameTag(id: string, name: string): Promise<void>;
+  /**
+   * Moves every use of `sourceId` onto `targetId` and deletes the source. A bar that had both keeps
+   * the target's rating, or the source's when the target had none.
+   */
+  mergeTags(sourceId: string, targetId: string): Promise<void>;
+  deleteTag(id: string): Promise<void>;
+  /** Deletes tags that no bar uses. */
+  deleteUnusedTags(): Promise<void>;
   addVisit(barId: string, date: string, note: string | null): Promise<void>;
 }

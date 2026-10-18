@@ -231,9 +231,34 @@ export function createSupabaseBarsRepo(sb: SupabaseClient): BarsRepo {
     },
 
     async listTags() {
-      const { data, error } = await sb.from("tags").select("*").order("name");
+      const { data, error } = await sb.from("tags").select("id, name, bar_tags(count)").order("name");
       fail("listTags", error);
-      return (data ?? []) as TagRow[];
+      return ((data ?? []) as { id: string; name: string; bar_tags: { count: number }[] }[]).map((t) => ({
+        id: t.id,
+        name: t.name,
+        barCount: t.bar_tags[0]?.count ?? 0,
+      }));
+    },
+
+    async renameTag(id, name) {
+      const { error } = await sb.from("tags").update({ name }).eq("id", id);
+      fail("renameTag", error);
+    },
+
+    async mergeTags(sourceId, targetId) {
+      // One SQL function, so the move and the delete happen in a single transaction.
+      const { error } = await sb.rpc("merge_tags", { source_id: sourceId, target_id: targetId });
+      fail("mergeTags", error);
+    },
+
+    async deleteTag(id) {
+      const { error } = await sb.from("tags").delete().eq("id", id);
+      fail("deleteTag", error);
+    },
+
+    async deleteUnusedTags() {
+      const { error } = await sb.rpc("delete_unused_tags");
+      fail("deleteUnusedTags", error);
     },
 
     async setBarTags(barId, tags) {

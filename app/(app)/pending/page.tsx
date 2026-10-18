@@ -166,7 +166,7 @@ export default function PendingPage() {
         {mode.kind === "visit" && visitBar && (
           <BarForm
             initial={visitBar}
-            tagSuggestions={tags.map((t) => t.name)}
+            tagSuggestions={tags}
             submitLabel="Guardar visita"
             onSubmit={(v) => markVisited(visitBar.id, v)}
           />

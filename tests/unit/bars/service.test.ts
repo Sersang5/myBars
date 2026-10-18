@@ -230,4 +230,83 @@ describe("bars service", () => {
     await service.addVisitedBar(rural.googlePlaceId, {});
     expect((await repo.getBar(b.barId))!.pendingReason).toBeNull();
   });
+
+  describe("tag management", () => {
+    async function twoBars() {
+      const { service, repo } = ctx;
+      const a = await service.addVisitedBar(bar.googlePlaceId, {
+        tags: [
+          { name: "croqueta", rating: 3 },
+          { name: "croquetas", rating: null },
+          { name: "terraza", rating: null },
+        ],
+      });
+      const b = await service.addVisitedBar(rural.googlePlaceId, { tags: [{ name: "croqueta", rating: 4.5 }] });
+      const id = async (name: string) => (await repo.listTags()).find((t) => t.name === name)!.id;
+      return { a: a.barId, b: b.barId, id };
+    }
+    const tagsOf = async (barId: string) =>
+      (await ctx.repo.getBar(barId))!.tags.map((t) => [t.name, t.rating]).sort();
+
+    it("listTags reports how many bars use each tag", async () => {
+      await twoBars();
+      expect(await ctx.repo.listTags()).toEqual([
+        expect.objectContaining({ name: "croqueta", barCount: 2 }),
+        expect.objectContaining({ name: "croquetas", barCount: 1 }),
+        expect.objectContaining({ name: "terraza", barCount: 1 }),
+      ]);
+    });
+
+    it("renameTag renames in place, normalizing the new name", async () => {
+      const { a, id } = await twoBars();
+      const terraza = await id("terraza");
+      expect(await ctx.service.renameTag(terraza, "  Terraza Cubierta ")).toEqual({ tagId: terraza, merged: false });
+      expect(await tagsOf(a)).toContainEqual(["terraza cubierta", null]);
+    });
+
+    it("renameTag onto an existing name merges, keeping the target's rating when it has one", async () => {
+      const { a, b, id } = await twoBars();
+      const singular = await id("croqueta");
+      const plural = await id("croquetas");
+      expect(await ctx.service.renameTag(singular, "Croquetas")).toEqual({ tagId: plural, merged: true });
+      // Bar a had both: the target had no rating, so it takes the source's.
+      expect(await tagsOf(a)).toEqual([["croquetas", 3], ["terraza", null]]);
+      expect(await tagsOf(b)).toEqual([["croquetas", 4.5]]);
+      expect((await ctx.repo.listTags()).map((t) => [t.name, t.barCount])).toEqual([["croquetas", 2], ["terraza", 1]]);
+    });
+
+    it("renameTag keeps the target's own rating on conflict", async () => {
+      const { service, repo } = ctx;
+      const { barId } = await service.addVisitedBar(bar.googlePlaceId, {
+        tags: [{ name: "vermú", rating: 2 }, { name: "vermut", rating: 5 }],
+      });
+      const vermu = (await repo.listTags()).find((t) => t.name === "vermú")!.id;
+      await service.renameTag(vermu, "vermut");
+      expect((await repo.getBar(barId))!.tags.map((t) => [t.name, t.rating])).toEqual([["vermut", 5]]);
+    });
+
+    it("renameTag to the same name is a no-op and an empty name is rejected", async () => {
+      const { id } = await twoBars();
+      const terraza = await id("terraza");
+      expect(await ctx.service.renameTag(terraza, "TERRAZA")).toEqual({ tagId: terraza, merged: false });
+      await expect(ctx.service.renameTag(terraza, "   ")).rejects.toThrow();
+    });
+
+    it("deleteTag removes the tag from every bar", async () => {
+      const { a, b, id } = await twoBars();
+      await ctx.service.deleteTag(await id("croqueta"));
+      expect(await tagsOf(a)).toEqual([["croquetas", null], ["terraza", null]]);
+      expect(await tagsOf(b)).toEqual([]);
+      expect((await ctx.repo.listTags()).map((t) => t.name)).toEqual(["croquetas", "terraza"]);
+    });
+
+    it("tags left without bars are cleaned up after editing or deleting a bar", async () => {
+      const { a, b } = await twoBars();
+      await ctx.service.updateBar(a, { tags: [{ name: "croqueta", rating: 3 }] });
+      expect((await ctx.repo.listTags()).map((t) => t.name)).toEqual(["croqueta"]);
+      await ctx.service.deleteBar(a);
+      await ctx.service.deleteBar(b);
+      expect(await ctx.repo.listTags()).toEqual([]);
+    });
+  });
 });

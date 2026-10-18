@@ -174,4 +174,50 @@ describe("createSupabaseBarsRepo", () => {
     const { data: after } = await sb.from("places").select("*").eq("google_place_id", d.googlePlaceId).single();
     expect(after).toMatchObject({ id: place.id, city_id: city.id, name: "Candidato 2" });
   });
+
+  it("counts, renames, merges and deletes tags, and cleans up unused ones", async () => {
+    const repo = createSupabaseBarsRepo(sb);
+    const city = await repo.insertCity({ name: "Lugo", googlePlaceId: "ChIJint-lugo", location: { lat: 43.01, lng: -7.55 } });
+    const barA = await repo.insertBar((await repo.upsertPlace({ ...details, googlePlaceId: "ChIJint-tag-a" }, city.id)).id, "visited", {});
+    const barB = await repo.insertBar((await repo.upsertPlace({ ...details, googlePlaceId: "ChIJint-tag-b" }, city.id)).id, "visited", {});
+    const pulpo = await repo.upsertTag("pulpo");
+    const polbo = await repo.upsertTag("polbo");
+    const sola = await repo.upsertTag("sin bares");
+    await repo.setBarTags(barA, [
+      { tagId: pulpo.id, rating: null },
+      { tagId: polbo.id, rating: 3 },
+    ]);
+    await repo.setBarTags(barB, [{ tagId: polbo.id, rating: 4.5 }]);
+
+    const mine = async () =>
+      (await repo.listTags()).filter((t) => ["pulpo", "polbo", "sin bares", "pulpo á feira"].includes(t.name));
+    expect(await mine()).toEqual([
+      { id: polbo.id, name: "polbo", barCount: 2 },
+      { id: pulpo.id, name: "pulpo", barCount: 1 },
+      { id: sola.id, name: "sin bares", barCount: 0 },
+    ]);
+
+    await repo.deleteUnusedTags();
+    expect((await mine()).map((t) => t.name)).toEqual(["polbo", "pulpo"]);
+
+    // Merge: bar A had both, the target had no rating so it takes the source's.
+    await repo.mergeTags(polbo.id, pulpo.id);
+    const tagsOf = async (id: string) => (await repo.getBar(id))!.tags.map((t) => [t.name, t.rating]);
+    expect(await tagsOf(barA)).toEqual([["pulpo", 3]]);
+    expect(await tagsOf(barB)).toEqual([["pulpo", 4.5]]);
+    expect(await mine()).toEqual([{ id: pulpo.id, name: "pulpo", barCount: 2 }]);
+
+    await repo.renameTag(pulpo.id, "pulpo á feira");
+    expect(await tagsOf(barA)).toEqual([["pulpo á feira", 3]]);
+
+    await repo.deleteTag(pulpo.id);
+    expect(await tagsOf(barA)).toEqual([]);
+    expect(await mine()).toEqual([]);
+  });
+
+  it("signed-out callers cannot run the tag functions", async () => {
+    const anon = createClient(url, anonKey, { auth: { persistSession: false } });
+    const { error } = await anon.rpc("delete_unused_tags");
+    expect(error).not.toBeNull();
+  });
 });

@@ -7,12 +7,13 @@ import { BarCard } from "@/components/bars/BarCard";
 import { BarDetail } from "@/components/bars/BarDetail";
 import { BarFilters } from "@/components/bars/BarFilters";
 import { BarForm, type BarFormValue } from "@/components/bars/BarForm";
+import { TagManager, type TagChange } from "@/components/bars/TagManager";
 import { PlaceSearch } from "@/components/bars/PlaceSearch";
 import { BottomSheet } from "@/components/BottomSheet";
 import { useCity } from "@/components/CityProvider";
 import { SavedElsewhere, useSavedCity, type SavedCity } from "@/components/SavedElsewhere";
 import { useCityBars } from "@/hooks/useCityBars";
-import { defaultSort, filterBars, sortBars } from "@/lib/bars/query";
+import { defaultSort, filterBars, sortBars, tagFilterOptions } from "@/lib/bars/query";
 import type { BarFilters as Filters, BarSort } from "@/lib/bars/types";
 import type { Suggestion } from "@/lib/places/types";
 import { madridToday } from "@/lib/server/today";
@@ -21,6 +22,7 @@ import { formatRating } from "@/lib/ui/format";
 type Mode =
   | { kind: "list" }
   | { kind: "filters" }
+  | { kind: "tags" }
   | { kind: "search" }
   | { kind: "new"; place: Suggestion }
   | { kind: "detail"; barId: string; notice?: string }
@@ -28,7 +30,7 @@ type Mode =
 
 const SORT_LABELS: Record<BarSort, string> = {
   overall: "Nota global",
-  tag: "Nota del tag",
+  tag: "Nota de la etiqueta",
   recent: "Más reciente",
   visits: "Más visitado",
   name: "Nombre",
@@ -116,7 +118,29 @@ export default function BarsPage() {
   const close = () => setMode({ kind: "list" });
   const detailBar =
     mode.kind === "detail" || mode.kind === "edit" ? bars.find((b) => b.id === mode.barId) : undefined;
-  const suggestions = tags.map((t) => t.name);
+  const tagOptions = tagFilterOptions(bars, tags, tagIds);
+
+  /** Shows the ranking for one tag: only that filter, sorted by its rating. */
+  function showTagRanking(tagId: string) {
+    setFilters({ tagIds: [tagId] });
+    setSearchText("");
+    setSort(null);
+    close();
+  }
+
+  async function tagsChanged(change: TagChange) {
+    await load();
+    setFilters((f) => {
+      if (!f.tagIds) return f;
+      let ids = f.tagIds;
+      if (change.kind === "deleted") ids = ids.filter((id) => id !== change.tagId);
+      if (change.kind === "merged") {
+        ids = ids.map((id) => (id === change.fromId ? change.intoId : id));
+        ids = ids.filter((id, i) => ids.indexOf(id) === i);
+      }
+      return ids === f.tagIds ? f : { ...f, tagIds: ids };
+    });
+  }
 
   async function create(place: Suggestion, value: BarFormValue): Promise<string | null> {
     const res = await addVisitedBarAction(place.googlePlaceId, value);
@@ -265,13 +289,18 @@ export default function BarsPage() {
       <BottomSheet open={mode.kind === "filters"} onClose={close} title="Filtros">
         <BarFilters
           filters={filters}
-          tags={tags}
+          tags={tagOptions}
           onApply={(f) => {
             setFilters({ ...f, text: filters.text });
             setSort(null);
             close();
           }}
+          onManageTags={() => setMode({ kind: "tags" })}
         />
+      </BottomSheet>
+
+      <BottomSheet open={mode.kind === "tags"} onClose={close} title="Etiquetas">
+        <TagManager tags={tags} onChanged={tagsChanged} />
       </BottomSheet>
 
       <BottomSheet open={mode.kind === "search"} onClose={close} title="Añadir bar">
@@ -284,7 +313,7 @@ export default function BarsPage() {
       <BottomSheet open={mode.kind === "new"} onClose={close} title={mode.kind === "new" ? mode.place.mainText : ""}>
         {mode.kind === "new" && (
           <BarForm
-            tagSuggestions={suggestions}
+            tagSuggestions={tags}
             submitLabel="Guardar"
             onSubmit={(v) => create(mode.place, v)}
           />
@@ -298,6 +327,7 @@ export default function BarsPage() {
             notice={mode.notice}
             onChanged={async () => { await load(); }}
             onEdit={() => setMode({ kind: "edit", barId: detailBar.id })}
+            onTagSelect={showTagRanking}
             onDeleted={async () => {
               await load();
               close();
@@ -310,7 +340,7 @@ export default function BarsPage() {
         {mode.kind === "edit" && detailBar && (
           <BarForm
             initial={detailBar}
-            tagSuggestions={suggestions}
+            tagSuggestions={tags}
             submitLabel="Guardar cambios"
             onSubmit={(v) => update(detailBar.id, v)}
           />

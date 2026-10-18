@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardTags, defaultSort, filterBars, lastVisit, sortBars, sortPending } from "@/lib/bars/query";
+import { cardTags, defaultSort, filterBars, lastVisit, sortBars, sortPending, tagFilterOptions } from "@/lib/bars/query";
 import { makeBar } from "./fixtures";
 
 const today = new Date("2026-10-17T12:00:00Z");
@@ -135,5 +135,38 @@ describe("sortPending", () => {
     const input = [old, newB, newA];
     expect(sortPending(input).map((b) => b.id)).toEqual(["3", "2", "1"]);
     expect(input.map((b) => b.id)).toEqual(["1", "2", "3"]);
+  });
+});
+
+describe("tagFilterOptions", () => {
+  const all = [
+    { id: "a", name: "croquetas", barCount: 7 },
+    { id: "b", name: "terraza", barCount: 3 },
+    { id: "c", name: "tortilla", barCount: 9 },
+    { id: "d", name: "vermut", barCount: 2 },
+  ];
+  const bars = [
+    makeBar({ id: "1", tags: [tag("a", "croquetas"), tag("b", "terraza")] }),
+    makeBar({ id: "2", tags: [tag("b", "terraza", 4)] }),
+    makeBar({ id: "3", tags: [tag("c", "tortilla", 5)] }),
+  ];
+
+  it("only offers tags used by these bars, counted per bar, most used first", () => {
+    expect(tagFilterOptions(bars, all, [])).toEqual([
+      { id: "b", name: "terraza", count: 2 },
+      { id: "a", name: "croquetas", count: 1 },
+      { id: "c", name: "tortilla", count: 1 },
+    ]);
+  });
+  it("keeps selected tags even when no bar here has them", () => {
+    expect(tagFilterOptions(bars, all, ["d"]).map((o) => [o.id, o.count])).toEqual([
+      ["b", 2],
+      ["a", 1],
+      ["c", 1],
+      ["d", 0],
+    ]);
+  });
+  it("drops selected ids that no longer exist", () => {
+    expect(tagFilterOptions([], all, ["gone"])).toEqual([]);
   });
 });
