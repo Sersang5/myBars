@@ -3,6 +3,7 @@
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { otpSendErrorMessage } from "@/lib/auth/otp-error";
 
 const LINK_ERROR =
   "No se pudo validar el enlace. Ábrelo en el mismo navegador donde lo pediste, o usa el código de 6 dígitos.";
@@ -15,6 +16,7 @@ export function LoginForm({ linkError }: { linkError: boolean }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [sendError, setSendError] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [codeError, setCodeError] = useState<string | null>(null);
@@ -22,14 +24,22 @@ export function LoginForm({ linkError }: { linkError: boolean }) {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setState("sending");
-    const { error } = await browserSupabase().auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-        shouldCreateUser: false,
-      },
-    });
-    setState(error ? "error" : "sent");
+    try {
+      const { error } = await browserSupabase().auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          shouldCreateUser: false,
+        },
+      });
+      if (error) console.error("signInWithOtp failed", error);
+      setSendError(error ? otpSendErrorMessage(error) : null);
+      setState(error ? "error" : "sent");
+    } catch (err) {
+      console.error("signInWithOtp threw", err);
+      setSendError(otpSendErrorMessage({ message: err instanceof Error ? err.message : String(err) }));
+      setState("error");
+    }
   }
 
   async function onVerify(e: React.FormEvent) {
@@ -79,7 +89,7 @@ export function LoginForm({ linkError }: { linkError: boolean }) {
           Enviar enlace
         </button>
       </form>
-      {state === "error" && <p role="alert">No se pudo enviar el enlace. Inténtalo de nuevo.</p>}
+      {state === "error" && <p role="alert">{sendError}</p>}
       {state === "sent" && (
         <>
           <p>Revisa tu correo: abre el enlace o escribe el código.</p>
